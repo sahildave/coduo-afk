@@ -1,114 +1,114 @@
-# AFK Claude
+# coduo-afk
 
-AFK Claude is a package-free Node.js task runner for DAG-driven coding projects. Install it once,
-then invoke it from any project without copying runner scripts or adding a `package.json`.
+coduo-afk runs a GitHub epic while you are away from the keyboard. You write the epic and its child
+issues; the runner builds each issue with a fresh coding agent in its own Git worktree, checks the
+work with your project's own gates, merges the lanes one at a time, reviews the whole branch, and
+leaves you one pull request to read and merge.
 
-It schedules independent DAG tasks into isolated Git worktrees, launches a fresh Claude builder for
-each task, verifies and commits task branches, serializes fresh-agent merges into `main`, verifies
-again, and only then marks tasks passed.
+It is a package-free Node.js CLI (`afk`). Nothing is installed into your project.
 
-## Runner v2
+## How it works
 
-This is the **v2 runner** (`afk --version`). Consuming projects must read
-[`CHANGELOG.md`](CHANGELOG.md) before upgrading: `maxParallel` inverted from a cap to a floor, the
-closeout review now parses reports it used to discard, `Task` is denied to lane agents, and the pull
-request now opens at the first merge rather than at the close.
+![From an idea to merged code: coduo-epic writes the epic issue, coduo-tickets cuts the child issues, afk epic builds the pull request, coduo-land-pr merges it](docs/diagrams/pipeline.svg)
 
-The **epic `afk:` block schema is still version 1** and did not change. Every existing epic still
-validates. `afk --version` prints both numbers for exactly this reason.
+The work is planned by hand, with skills from [coduo-skills](https://github.com/sahildave/coduo-skills),
+and built unattended by the runner:
 
-Where a consuming project's own docs describe AFK runner behaviour, `CHANGELOG.md` supersedes them —
-and only them; a project's own coding standards and review rules are untouched by this. The
-"Precedence" section there states the limit and gives a checklist for finding stale local claims.
+1. **Write the epic.** `/coduo-epic` turns a conversation into one GitHub issue: the spec, plus a
+   fenced `afk:` block that names the branch.
+2. **Cut the tickets.** `/coduo-tickets` splits the epic into child issues, each one small enough for
+   one agent, and writes their dependency graph back onto the epic as a `tasks:` block.
+3. **Run it.** `afk epic <number>` builds every ticket and opens a pull request. This is the only
+   unattended step.
+4. **Land it.** You read the pull request and merge it. `/coduo-land-pr` closes the issues it shipped
+   and removes the branches and worktrees.
+
+Inside step 3:
+
+![Inside one afk epic run: a scheduler starts each ready task in its own worktree lane, a merge queue lands finished lanes one at a time on the epic branch, and a closeout review gates the pull request](docs/diagrams/run.svg)
+
+- **Plan review.** Before any branch exists, a reviewer agent reads the epic and its tickets and
+  refuses a graph that cannot be built as written.
+- **Lanes.** The scheduler starts every ticket whose dependencies have passed, each in its own Git
+  worktree with a fresh builder agent. A lane passes only when your configured checks pass in it.
+- **Merge queue.** Finished lanes merge into the epic branch one at a time, each by a fresh merger
+  agent, and the checks run again after every merge. The pull request opens at the first merge.
+- **Closeout.** When the graph is done, a verifier reviews the whole branch against the epic with
+  `code-review`, and a fixer resolves what it finds. The run stops at the pull request; merging it is yours.
+
+Three files, three owners: the epic and its issues say **what** to build, `.afk-setup/config.yaml`
+says **how** your stack is verified, and `.afk/state.json` says what is happening **now**.
 
 ## Requirements
 
 - Node.js 20 or newer
-- Git with a `main` branch (or pass `--base=<branch>` to work on another branch)
+- Git, with the work branching from `main` (or pass `--base=<branch>`)
 - The `claude` CLI on `PATH` for `afk`, or the `codex` CLI for `afk-codex` (see
   [Two entry points](#two-entry-points))
-- A clean checkout of the base branch when starting the runner
-- The role skills from the coduo-agents marketplace (`code-review` for the closeout review,
-  `coduo-implement` and `karpathy-guidelines` for builders). The marketplace is not public yet.
-
-Each project supplies its own:
-
-- `AGENTS.md`
-- `.afk-setup/config.yaml` — how this stack is verified, and which skills each role gets
-- `.afk-setup/prompts/<role>.md` — optional, overrides a role's shipped prompt
-- `.gitignore` entry for `.afk/`
-
-No `.gitattributes` line is needed: since #106 nothing the runner commits lives under
-`.afk-runs/**`. A line left by an earlier `coduo-afk setup` is harmless.
-
-`.afk-setup/` is committed and human-owned; `.afk/` is machine state and ignored.
-Nothing crosses that line, which is why `.afk/` needs no negation rule.
-
-No runner implementation belongs in the project.
+- `gh`, signed in, when the project is on GitHub
+- The [coduo-skills](https://github.com/sahildave/coduo-skills) plugins (next section)
 
 ## Install
 
-Nothing to install into a project. Put the runner on your `PATH` once and it works from any repo:
+1. Clone this repo and put the runner on your `PATH`:
 
-```bash
-ln -sf /path/to/coduo-afk/afk.mjs ~/.local/bin/afk
-ln -sf /path/to/coduo-afk/afk-codex.mjs ~/.local/bin/afk-codex   # optional
-```
+   ```bash
+   git clone https://github.com/sahildave/coduo-afk.git ~/code/coduo-afk
+   ```
+   ```bash
+   ln -sf ~/code/coduo-afk/afk.mjs ~/.local/bin/afk
+   ```
 
-Every command below is run **from the project you are working on**, not from this repo. `afk` treats
-your current directory as the project; the runner itself stays where you cloned it. Without the
-symlink, `afk` is `node /path/to/coduo-afk/afk.mjs` and everything else is identical.
+   `afk-codex.mjs` is the same runner on Codex; link it the same way if you want it.
+
+2. Install the skills. The planning steps use them, and so do the agents inside a run: builders
+   follow `coduo-implement` and `karpathy-guidelines`, and the closeout review runs `code-review`.
+
+   ```bash
+   claude plugin marketplace add sahildave/coduo-skills
+   ```
+   ```bash
+   claude plugin install coduo@coduo-skills
+   ```
+   ```bash
+   claude plugin install mattpocock-skills@coduo-skills
+   ```
+
+Every `afk` command runs **from the project you are working on**, not from this repo.
 
 ## Set up a project
 
-Four files, once per repo. [docs/first-hour.md](docs/first-hour.md) is the long version; this is the
-short one.
+Four things, once per repo. [docs/first-hour.md](docs/first-hour.md) is the long version.
 
-**1. Wire the stack plugins and the role skills.** In a Claude Code session opened in the project:
+1. **Propose the config.** From the project root:
 
-> set up coduo-agents here
+   ```bash
+   afk stack detect
+   ```
 
-The `setup-coduo-agents` skill classifies the repo, enables the plugins it needs in
-`.claude/settings.json`, and writes the `roles:` block into `.afk-setup/config.yaml`. Name the stack
-if detection would miss something not yet in `package.json`:
+   It is offline and free. It prints a `.afk-setup/config.yaml` block naming the skills each agent
+   role gets for this stack, and lists any stack it has no skills for.
 
-> set up coduo-agents here — this is a Next.js app on Vercel with Stripe and PostHog
+2. **Finish `.afk-setup/config.yaml` by hand.** `defaultChecks` is the field you cannot skip: a task
+   with nothing to gate it stops the run. `worktreeSetup` is the one people forget: a lane worktree
+   starts with no `node_modules` and no `.env.local`, so if your checks need them, `link` or `copy`
+   them here. If a check is a native toolchain the Claude Code sandbox cannot hold (`xcodebuild`,
+   `xcrun simctl`), also list it under `roles.verifier.gates`
+   ([docs/permissions.md](docs/permissions.md), "What it can run").
 
-> set up coduo-agents here, it's an Expo app with Supabase
+3. **Add `.afk/` to `.gitignore`.** It is the runner's machine state. `.afk-setup/` is committed and
+   yours; a run never writes to it.
 
-> set up coduo-agents here — SwiftUI, no package.json, it syncs through iCloud
+4. **Write `AGENTS.md`.** What a new contributor would need and the code does not say. Each lane
+   starts with no memory of the last one, so anything not written here does not exist.
 
-To see what it would propose without writing anything:
+Optional: `.afk-setup/prompts/<role>.md` replaces a role's shipped prompt for this project.
 
-```bash
-afk stack detect
-```
+## Upgrading
 
-Deterministic, offline, free. It prints the block and three things it will not silently drop: a
-plugin with no shipped role bindings, a stack with no plugin enabled, and a stack no plugin covers
-at all.
-
-**2. Finish `.afk-setup/config.yaml` by hand.** `defaultChecks` is the field you cannot skip — a task
-with nothing to gate it stops the run, by id. `worktreeSetup` is the one people forget: a lane
-worktree starts with no `node_modules` and no `.env.local`, so if your checks need them, `link` or
-`copy` them here or every lane fails identically for a reason no builder can fix. If a check
-is a native toolchain the Claude Code sandbox cannot hold (`xcodebuild`, `xcrun simctl`), list it
-under `roles.verifier.gates` too, or the closeout review reports every gate as skipped —
-[docs/permissions.md](docs/permissions.md), "What it can run".
-
-**3. Add `.afk/` to `.gitignore`.** One line. Not `.afk-setup/`, which is committed.
-The runner commits none of its own verification records into your tree: a lane's
-`verification.json` rides its task commit as a git note (`refs/notes/afk-verification/<id>`),
-and the integration record stays under `.afk/runs/`. So a `format:check` or `eslint` gate that
-covers the repo root never meets a file the runner wrote, and `.afk-runs/` needs neither an
-ignore rule nor a `.prettierignore` entry. What can still reach a branch under `.afk-runs/<id>/`
-is `ACTION-REQUIRED.md` — written only when a lane's protected-path edit was reverted, and meant
-to be seen in the PR. When an epic closes, the runner removes that epic's own `.afk-runs/<id>/`
-and `.agents/evidence/<id>/` in one final commit on the run branch, after the closeout review
-has read them (`sweepRunArtefacts: false` in `.afk-setup/config.yaml` keeps them).
-
-**4. Write `AGENTS.md`.** What a new contributor would need and the code does not say. Each lane
-starts with no memory of the last one, so anything not written here does not exist.
+This is the v2 runner (`afk --version`). [`CHANGELOG.md`](CHANGELOG.md) lists every breaking change
+and takes precedence over any description of runner behaviour in your own project's docs. The epic
+`afk:` block schema is still version 1, so existing epics keep validating.
 
 ## Run an epic
 
