@@ -355,7 +355,7 @@ before it calls anything. None of the five roles above has a rule for it.
 ```
 
 **Why it is scoped by directory.** The rule lives in
-`~/code/projects/afk-claude/.claude/settings.local.json`, so it applies only to
+`~/code/projects/coduo-afk/.claude/settings.local.json`, so it applies only to
 a session started in the runner's checkout. A session in any other project
 gets no merge permission from it, and merge permission is never global (the
 decision rule in `docs/spikes/merge-verb-classifier.md`). It allows the

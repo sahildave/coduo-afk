@@ -23,7 +23,7 @@ Integration rules:
 - Integrate only this task branch into the currently checked out {{baseBranch}} branch.
 - Understand and preserve all changes that landed on {{baseBranch}} since the task began.
 - Resolve conflicts semantically; never discard either side wholesale.
-- Do not modify the external AFK Claude runner installation, .afk-setup/, docs/progress.md, docs/progress/, agent-auto.log, .afk/, .agent-locks/, AGENTS.md, PLANNER.md, or dependency manifests/lockfiles. A project-owned scripts/ directory is ordinary task code.
+- Do not modify the external coduo-afk runner installation, .afk-setup/, docs/progress.md, docs/progress/, agent-auto.log, .afk/, .agent-locks/, AGENTS.md, PLANNER.md, or dependency manifests/lockfiles. A project-owned scripts/ directory is ordinary task code.
 - Produce a real non-fast-forward merge commit whose history contains the task branch tip.
 - Run appropriate validation, leave {{baseBranch}} clean, and stop. Do not integrate any other task.
 {{#skills}}

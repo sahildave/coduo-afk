@@ -9,7 +9,7 @@ defined in [docs/glossary.md](glossary.md).
 
 Two rules that apply to every step:
 
-- **`afk` below is `node /path/to/afk-claude/afk.mjs`**, run from the project
+- **`afk` below is `node /path/to/coduo-afk/afk.mjs`**, run from the project
   root. Every command named here appears in `afk --help`; nothing in this file
   is aspirational.
 - **Nothing of the runner is copied into the project.** The project supplies

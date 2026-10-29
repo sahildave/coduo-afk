@@ -688,10 +688,10 @@ export const HELP_SECTIONS = {
                                changes for consuming projects: CHANGELOG.md.`,
 };
 
-const HELP_BANNER = `AFK Claude — package-free parallel task runner
+const HELP_BANNER = `coduo-afk — package-free parallel task runner
 
 Usage:
-  node /path/to/afk-claude/afk.mjs <command> [arguments]
+  node /path/to/coduo-afk/afk.mjs <command> [arguments]
 
 Commands:`;
 
