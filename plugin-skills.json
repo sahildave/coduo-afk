@@ -1,0 +1,83 @@
+{
+  "_generated": "by `afk stack manifest --write` — do not hand-edit",
+  "plugins": {
+    "pstack": {
+      "source": "install cache (0.1.2)",
+      "skills": [
+        "blast-radius",
+        "principle-make-operations-idempotent",
+        "principle-prove-it-works",
+        "principle-separate-before-serializing-shared-state",
+        "show-me-your-work",
+        "typescript-best-practices"
+      ]
+    },
+    "react-doctor": {
+      "source": "install cache (d741d58e7831)",
+      "skills": [
+        "improve-react",
+        "improve-threejs",
+        "react-doctor"
+      ]
+    },
+    "superwall": {
+      "source": "install cache (0.1.0)",
+      "skills": [
+        "superwall",
+        "superwall-dashboard",
+        "superwall-editor",
+        "superwall-integrate",
+        "superwall-migrate",
+        "superwall-placements",
+        "superwall-review",
+        "wwdc"
+      ]
+    },
+    "vercel": {
+      "source": "install cache (0.50.0)",
+      "skills": [
+        "_conventions",
+        "access-protected-vercel-deployment",
+        "ai-gateway",
+        "ai-sdk",
+        "auth",
+        "bootstrap",
+        "build-agents",
+        "cdn-caching",
+        "chat-sdk",
+        "create-a-backend",
+        "custom-metrics",
+        "deploy",
+        "deployments-cicd",
+        "env",
+        "env-vars",
+        "eve",
+        "flags-sdk",
+        "knowledge-update",
+        "marketplace",
+        "microfrontends",
+        "next-cache-components",
+        "next-forge",
+        "next-upgrade",
+        "nextjs",
+        "queues",
+        "react-best-practices",
+        "routing-middleware",
+        "runtime-cache",
+        "shadcn",
+        "status",
+        "turbopack",
+        "vercel-agent",
+        "vercel-cli",
+        "vercel-connect",
+        "vercel-firewall",
+        "vercel-functions",
+        "vercel-sandbox",
+        "vercel-services",
+        "vercel-storage",
+        "verification",
+        "workflow"
+      ]
+    }
+  }
+}

@@ -1,0 +1,5 @@
+# Run artifacts are committed on purpose: the AFK runner reads
+# .afk-runs/<id>/verification.json back off a task branch with `git show`.
+# Dotted so it reads as runner-owned, not stray app code; tracked, not ignored.
+# Collapse it in GitHub diffs rather than ignoring it.
+.afk-runs/** linguist-generated=true

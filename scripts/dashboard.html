@@ -1,0 +1,1445 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AFK Runner Dashboard</title>
+    <style>
+      :root {
+        --bg: #fafafa;
+        --card: #fff;
+        --border: #e5e5e5;
+        --text: #111;
+        --text2: #666;
+        --text3: #999;
+        --accent: #2563eb;
+        --accent-bg: #eff6ff;
+        --success: #16a34a;
+        --success-bg: #f0fdf4;
+        --danger: #dc2626;
+        --danger-bg: #fef2f2;
+        --warn: #ca8a04;
+        --warn-bg: #fefce8;
+        --mono: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+        --sans:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0a0a0a;
+          --card: #171717;
+          --border: #2a2a2a;
+          --text: #e5e5e5;
+          --text2: #a3a3a3;
+          --text3: #666;
+          --accent: #60a5fa;
+          --accent-bg: #1e293b;
+          --success: #4ade80;
+          --success-bg: #052e16;
+          --danger: #f87171;
+          --danger-bg: #350a0a;
+          --warn: #facc15;
+          --warn-bg: #352a04;
+        }
+      }
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      /* Mobile first: this page is read on a phone at 3am as often as on a
+         desktop, so the small screen is the base and the wide one is the
+         enhancement. */
+      body {
+        font-family: var(--sans);
+        background: var(--bg);
+        color: var(--text);
+        padding: 1rem 0.9rem 2rem;
+        max-width: 900px;
+        margin: 0 auto;
+        -webkit-text-size-adjust: 100%;
+      }
+      @media (min-width: 760px) {
+        body {
+          padding: 2rem;
+        }
+      }
+      .group-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text3);
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        padding: 12px 0 6px;
+      }
+      .task {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 6px 10px;
+        padding: 10px 12px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 6px;
+        transition: border-color 0.15s;
+      }
+      .task:hover {
+        border-color: var(--accent);
+      }
+      .task-id {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text3);
+        width: 34px;
+        flex-shrink: 0;
+      }
+      .task-title {
+        flex: 1 1 12ch;
+        min-width: 0;
+        font-size: 14px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .task .badge {
+        margin-left: auto;
+      }
+      @media (max-width: 559px) {
+        /* The status badge stays on the title line; the numbers move below it
+           rather than squeezing the title down to three words. */
+        .task .deps,
+        .task .pips,
+        .task .progress-meta {
+          order: 2;
+        }
+        .task .progress-meta {
+          max-width: 100%;
+        }
+      }
+      .deps {
+        font-size: 11px;
+        color: var(--text3);
+        flex-shrink: 0;
+      }
+      .badge {
+        font-size: 11px;
+        padding: 2px 10px;
+        border-radius: 99px;
+        font-weight: 600;
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      .b-running {
+        background: var(--accent-bg);
+        color: var(--accent);
+      }
+      .b-passed {
+        background: var(--success-bg);
+        color: var(--success);
+      }
+      .b-failed {
+        background: var(--danger-bg);
+        color: var(--danger);
+      }
+      .b-ready {
+        background: var(--warn-bg);
+        color: var(--warn);
+      }
+      .b-blocked {
+        background: var(--bg);
+        color: var(--text3);
+      }
+      .b-pending {
+        background: var(--bg);
+        color: var(--text3);
+      }
+      /* A gate is not a status, it is a request: it gets the loudest fill the
+         page has short of danger, because nothing moves until someone acts. */
+      .b-gate {
+        background: var(--warn);
+        color: var(--bg);
+      }
+      .n-gate {
+        border-color: var(--warn);
+        background: linear-gradient(var(--warn-bg), var(--card) 70%);
+      }
+      /* Dead work that still claims to be running: never the calm accent blue. */
+      .b-stale {
+        background: var(--danger-bg);
+        color: var(--danger);
+        border: 1px dashed var(--danger);
+      }
+      .b-leftover {
+        background: var(--bg);
+        color: var(--text3);
+        border: 1px dashed var(--border);
+      }
+      /* ── the ticket DAG, flowing downward from the epic ─────────────── */
+      .dag {
+        position: relative;
+        margin-bottom: 1rem;
+      }
+      .dag-edges {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+      }
+      .dag-node {
+        position: absolute;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        /* Block flow, not a flex column: a flex item's display is blockified,
+           which makes `-webkit-line-clamp` inert and spills a third line of
+           title out of a fixed-height node. */
+        padding: 9px 11px 24px;
+        overflow: hidden;
+        cursor: pointer;
+        transition:
+          border-color 0.15s,
+          transform 0.15s cubic-bezier(0.2, 0, 0, 1);
+      }
+      .dag-node:hover {
+        border-color: var(--accent);
+        transform: translateY(-1px);
+      }
+      .dag-node .task-id {
+        width: auto;
+        font-variant-numeric: tabular-nums;
+      }
+      .dag-node .task-title {
+        white-space: normal;
+        font-size: 12.5px;
+        line-height: 1.3;
+        margin-top: 6px;
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 2;
+        overflow: hidden;
+      }
+      /* Pinned, so the progress pips sit on one line across the whole graph
+         however long each title runs. */
+      .dag-node .pips {
+        position: absolute;
+        left: 11px;
+        bottom: 9px;
+      }
+      .dag-head {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .dag-head .badge {
+        margin-left: auto;
+        font-size: 10px;
+        padding: 1px 7px;
+      }
+      /* Status tints the whole node — border and a wash of its own hue — so the
+         graph reads by colour at a glance without a rail down one side. */
+      .n-active {
+        border-color: var(--accent);
+        background: linear-gradient(var(--accent-bg), var(--card) 70%);
+      }
+      .n-done {
+        border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+      }
+      .n-failed {
+        border-color: var(--danger);
+        background: linear-gradient(var(--danger-bg), var(--card) 70%);
+      }
+      .n-stale {
+        border-color: var(--danger);
+        border-style: dashed;
+      }
+      .n-review,
+      .n-ready {
+        border-color: color-mix(in srgb, var(--warn) 55%, var(--border));
+      }
+      .icon {
+        display: block;
+        width: 12px;
+        height: 12px;
+        flex-shrink: 0;
+        stroke: currentColor;
+        fill: none;
+        stroke-width: 1.6;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        color: var(--text3);
+      }
+      /* ── per-ticket progress ───────────────────────────────────────── */
+      .pips {
+        display: flex;
+        gap: 3px;
+        flex-shrink: 0;
+      }
+      .pip {
+        width: 14px;
+        height: 4px;
+        border-radius: 99px;
+        background: var(--border);
+      }
+      .pip.on { background: var(--accent); }
+      .pip.done { background: var(--success); }
+      .pip.bad { background: var(--danger); }
+      .pip.wait { background: var(--warn); }
+      .progress-meta {
+        font-size: 11px;
+        color: var(--text3);
+        font-family: var(--mono);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .task .progress-meta {
+        flex-shrink: 0;
+        max-width: 240px;
+      }
+      /* ── every run on this machine, one tab each ────────────────────── */
+      .peers {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        margin-bottom: 1.25rem;
+        padding-bottom: 2px;
+        border-bottom: 1px solid var(--border);
+        scrollbar-width: none;
+      }
+      /* Inside a hub tab (#243) the hub's tabs switch runs; one strip, not two. */
+      body[data-embed] .peers {
+        display: none !important;
+      }
+      .peers::-webkit-scrollbar {
+        display: none;
+      }
+      .peer {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex-shrink: 0;
+        padding: 7px 12px;
+        border: 1px solid transparent;
+        border-bottom: none;
+        border-radius: 8px 8px 0 0;
+        background: none;
+        color: var(--text3);
+        font: inherit;
+        font-size: 12.5px;
+        cursor: pointer;
+        white-space: nowrap;
+        margin-bottom: -1px;
+      }
+      .peer:hover {
+        color: var(--text);
+      }
+      .peer.on {
+        background: var(--card);
+        border-color: var(--border);
+        border-bottom: 1px solid var(--card);
+        color: var(--text);
+        font-weight: 600;
+      }
+      .peer-epic {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+        font-variant-numeric: tabular-nums;
+      }
+      /* Not a fact about the run — a gap in what that dashboard can answer. */
+      .peer-epic.unknown {
+        font-family: var(--sans);
+        font-style: italic;
+        opacity: 0.7;
+      }
+      .dot.hollow {
+        background: none;
+        border: 1px solid currentColor;
+      }
+      /* ── the run's identity: which project, which epic, how far ─────── */
+      .run-head {
+        margin-bottom: 1.75rem;
+        padding-bottom: 1.25rem;
+        border-bottom: 1px solid var(--border);
+      }
+      .run-line {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      h1 {
+        font-size: 15px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        color: var(--text2);
+        margin: 0;
+      }
+      .run-epic {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin-top: 4px;
+      }
+      .run-epic-n {
+        font-family: var(--mono);
+        font-size: clamp(19px, 5.2vw, 24px);
+        font-weight: 500;
+        color: var(--text3);
+        font-variant-numeric: tabular-nums;
+      }
+      .run-epic-t {
+        font-size: clamp(19px, 5.2vw, 24px);
+        font-weight: 600;
+        letter-spacing: -0.025em;
+        line-height: 1.15;
+        text-wrap: balance;
+      }
+      .run-count {
+        margin-left: auto;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text3);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        align-self: flex-end;
+      }
+      .run-count b {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .bar {
+        height: 4px;
+        border-radius: 99px;
+        background: var(--border);
+        overflow: hidden;
+        margin-top: 14px;
+        display: flex;
+      }
+      .bar span {
+        display: block;
+        height: 100%;
+      }
+      .tally {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 16px;
+        margin-top: 10px;
+        font-size: 12.5px;
+        color: var(--text2);
+        font-variant-numeric: tabular-nums;
+      }
+      .tally i {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-right: 7px;
+        vertical-align: 1px;
+      }
+      .run-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px 10px;
+        margin-top: 10px;
+        font-family: var(--mono);
+        font-size: 11.5px;
+        color: var(--text3);
+        font-variant-numeric: tabular-nums;
+      }
+      .run-meta .sep {
+        opacity: 0.45;
+      }
+      .run-meta b {
+        color: var(--text2);
+        font-weight: 500;
+      }
+      .run-note {
+        margin-top: 12px;
+        max-width: 78ch;
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--text2);
+        border-left: 1px solid var(--border);
+        padding-left: 10px;
+      }
+      .run-note.wants-you {
+        border-left-color: var(--warn);
+        color: var(--warn);
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11.5px;
+        font-weight: 600;
+        padding: 3px 10px;
+        border-radius: 99px;
+        white-space: nowrap;
+      }
+      .pill-on {
+        background: var(--success-bg);
+        color: var(--success);
+      }
+      .pill-off {
+        background: var(--bg);
+        color: var(--text3);
+        border: 1px solid var(--border);
+      }
+      .pill-stale {
+        background: var(--danger-bg);
+        color: var(--danger);
+      }
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+      .dot.live {
+        animation: pulse 1.6s ease-in-out infinite;
+      }
+      /* Every agent a run spawns that is not a lane: verifier, supervisor,
+         fixer, reflector, plan reviewer, epic close. They come and go, so the
+         list is ordered by what wrote last. */
+      .agents {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      .agent {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 11px;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 99px;
+        cursor: pointer;
+        font-size: 12px;
+        transition: border-color 0.15s;
+      }
+      .agent:hover {
+        border-color: var(--accent);
+      }
+      .agent-role {
+        font-weight: 600;
+      }
+      .agent-id,
+      .agent-when {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+      }
+      .agent.recent {
+        border-color: var(--accent);
+      }
+      .agent.recent .agent-role {
+        color: var(--accent);
+      }
+      .log-box {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-top: 1.5rem;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      .log-box pre {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text2);
+        white-space: pre-wrap;
+        word-break: break-all;
+        line-height: 1.6;
+      }
+      .log-title {
+        font-size: 13px;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        color: var(--text2);
+      }
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.3;
+        }
+      }
+      .err {
+        color: var(--danger);
+      }
+      .lock {
+        display: inline-flex;
+        color: var(--text3);
+      }
+      .worktrees {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-bottom: 6px;
+      }
+      .worktree-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 12px 14px;
+        min-width: 200px;
+        flex: 1 1 200px;
+        max-width: 280px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        transition: border-color 0.15s;
+      }
+      .worktree-card:hover {
+        border-color: var(--accent);
+      }
+      .worktree-card .task-id {
+        width: auto;
+      }
+      .worktree-card .task-title {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: unset;
+        font-weight: 500;
+      }
+      .worktree-card .badge {
+        align-self: flex-start;
+        margin-top: 2px;
+      }
+      .task,
+      .worktree-card {
+        cursor: pointer;
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 0;
+        z-index: 10;
+      }
+      @media (min-width: 760px) {
+        .overlay {
+          align-items: center;
+          padding: 2rem;
+        }
+      }
+      .overlay[hidden] {
+        display: none;
+      }
+      .panel {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px 14px 0 0;
+        width: min(960px, 100%);
+        max-height: 88vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      .panel-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .panel-body {
+        overflow-y: auto;
+        padding: 1rem 16px;
+      }
+      .panel-body pre {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--text2);
+        white-space: pre-wrap;
+        word-break: break-word;
+        line-height: 1.6;
+      }
+      .panel-summary {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+        margin-bottom: 0.75rem;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      /* The phase walk an attempt reported, with the clock on each one. */
+      .phases {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-bottom: 0.75rem;
+      }
+      .phase-step {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text2);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 3px 8px;
+        white-space: nowrap;
+      }
+      .phase-step.now {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      .phase-step.failed {
+        color: var(--danger);
+        border-color: var(--danger);
+      }
+      .phase-step .phase-when {
+        color: var(--text3);
+        margin-left: 6px;
+      }
+      .attempt {
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--text3);
+        background: var(--bg);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 3px 8px;
+        cursor: pointer;
+      }
+      .attempt.on {
+        color: var(--accent);
+        border-color: var(--accent);
+      }
+      .panel-close {
+        margin-left: auto;
+      }
+      @media (min-width: 760px) {
+        .panel {
+          border-radius: 12px;
+          max-height: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav class="peers" id="peers" hidden></nav>
+    <header class="run-head" id="runHead">
+      <h1>loading…</h1>
+    </header>
+    <a class="group-label" href="/usage.html">Token usage and cost (all AFK runs) →</a>
+    <div class="group-label" id="dagLabel" hidden>Ticket DAG</div>
+    <div class="dag" id="dag"></div>
+    <div id="worktrees"></div>
+    <div id="groups"></div>
+    <div class="group-label" id="agentsLabel" hidden>Run agents</div>
+    <div class="agents" id="agents"></div>
+    <div class="log-box">
+      <div class="log-title">orchestrator + running task (tail)</div>
+      <pre id="logPre">loading...</pre>
+    </div>
+
+    <div class="overlay" id="taskLog" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <span class="task-id" id="taskLogId"></span>
+          <span class="task-title" id="taskLogTitle"></span>
+          <span id="taskLogAttempts"></span>
+          <button class="attempt panel-close" id="taskLogClose">close</button>
+        </div>
+        <div class="panel-body">
+          <div class="panel-summary" id="taskLogSummary"></div>
+          <div class="phases" id="taskLogPhases"></div>
+          <pre id="taskLogPre">loading...</pre>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Which dashboard this page is READING. It starts as the one that served
+      // the page and a peer tab repoints it — every endpoint here is already
+      // origin-relative and every dashboard already sends CORS `*`, so nothing
+      // else has to know.
+      const HOME = location.origin.startsWith("http")
+        ? location.origin
+        : "http://127.0.0.1:4041";
+      let API = HOME;
+
+      // Age of the last state write. A stale run's clock stops, so this is how a
+      // human tells "busy for two minutes" from "dead since 04:13".
+      // The epic-close summary carries the verifier's own prose, which is
+      // model-written text going into innerHTML. Escaped rather than trusted.
+      function esc(text) {
+        return String(text ?? "").replace(/[&<>"']/g, (ch) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[ch]);
+      }
+
+      // How long ago something happened, as a duration: `43m`, `2h 10m`.
+      function since(iso) {
+        const ms = iso ? Date.now() - Date.parse(iso) : NaN;
+        return Number.isFinite(ms) ? fmtDuration(ms) : null;
+      }
+
+      function ago(iso) {
+        const age = since(iso);
+        return age ? `written ${age} ago` : "age unknown";
+      }
+
+      function getPhase(t, all) {
+        if (["passed", "no-op"].includes(t.status)) return "done";
+        if (t.status === "stale") return "stale";
+        if (["running", "integrating"].includes(t.status)) return "active";
+        if (["failed", "integration_failed", "infra_failed"].includes(t.status))
+          return "failed";
+        // The one phase a person clears by hand, so it is never folded into
+        // "ready (next)" where the scheduler looks like it is about to act.
+        if (t.status === "awaiting_acceptance") return "gate";
+        if (t.status === "ready_to_integrate" || t.review) return "review";
+        if (t.status === "blocked") return "blocked";
+        const ready = t.dependsOn.every((id) => {
+          const d = all.find((x) => x.id === id);
+          return d && d.status === "passed";
+        });
+        return ready ? "ready" : "blocked";
+      }
+
+      const PHASE_BADGE = {
+        gate: "b-gate",
+        active: "b-running",
+        stale: "b-stale",
+        done: "b-passed",
+        failed: "b-failed",
+        ready: "b-ready",
+        review: "b-ready",
+        blocked: "b-blocked",
+      };
+      const badgeClass = (phase) => PHASE_BADGE[phase] ?? "b-blocked";
+      const statusLabel = (t) =>
+        t.status === "stale" ? `stale (${t.staleFrom})` : t.status;
+
+      function fmtTokens(n) {
+        if (!n) return "0";
+        return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n);
+      }
+      function fmtDuration(ms) {
+        const s = Math.round(ms / 1000);
+        if (s < 60) return `${s}s`;
+        const m = Math.round(s / 60);
+        return m < 60 ? `${m}m` : `${Math.floor(m / 60)}h${m % 60}m`;
+      }
+
+      // Five pips, one per lifecycle the runner records: queued, building,
+      // review, integrating, done. Filled ones are stages this ticket LEFT —
+      // never a guessed percentage of work remaining.
+      function pips(t) {
+        const live = ["active", "review", "failed", "stale", "gate"].includes(t.phase);
+        const cell = (i) => {
+          if (t.phase === "done") return "done";
+          if (i < t.stage) return "done";
+          if (i !== t.stage || !live) return "";
+          if (["failed", "stale"].includes(t.phase)) return "bad";
+          return ["review", "gate"].includes(t.phase) ? "wait" : "on";
+        };
+        return (
+          '<span class="pips" title="queued · building · review · integrating · passed">' +
+          [0, 1, 2, 3, 4].map((i) => `<span class="pip ${cell(i)}"></span>`).join("") +
+          "</span>"
+        );
+      }
+
+      // What this ticket has actually done: the live agent's counters while an
+      // agent is on it, the recorded gate result once one exists.
+      function progressMeta(t) {
+        const bits = [];
+        if (t.live) {
+          bits.push(`${t.live.kind === "integration" ? "merge " : ""}a${t.live.attempt ?? "?"}`);
+          if (t.live.elapsedMs) bits.push(`${fmtDuration(t.live.elapsedMs)} in`);
+          bits.push(`${t.live.toolCalls} tools`);
+          if (t.live.outputTokens) bits.push(`${fmtTokens(t.live.outputTokens)} out`);
+          if (t.live.rateLimited) bits.push("rate-limited");
+          if (t.live.action) bits.push(t.live.action.slice(0, 70));
+        } else {
+          if (t.builderAttempt > 1) bits.push(`attempt ${t.builderAttempt}`);
+          // `checkSummary` is the BUILDER's gate result. On a merge failure it
+          // is green and says nothing about what went red — the integration
+          // record is per-attempt on disk and never reaches `.afk/state.json`,
+          // so the honest line names the attempt and sends you to its log.
+          if (t.status === "integration_failed") {
+            bits.push(`merge attempt ${t.integrationAttempt || 1} red — open for the check`);
+          } else {
+            if (t.checkSummary)
+              bits.push(`${t.checkSummary.passed}/${t.checkSummary.total} checks`);
+            // Which check went red, not just how many: the failing command is
+            // the first thing anyone asks and it is already on disk.
+            if (t.checkSummary?.failing?.length)
+              bits.push(`red: ${t.checkSummary.failing[0].slice(0, 60)}`);
+            if (t.durationMs) bits.push(fmtDuration(t.durationMs));
+            if (t.integrationAttempt > 1) bits.push(`merge attempt ${t.integrationAttempt}`);
+          }
+        }
+        return bits.length
+          ? `<span class="progress-meta">${esc(bits.join(" · "))}</span>`
+          : "";
+      }
+
+      // An authored mark, not an emoji: a padlock at the same stroke weight as
+      // everything else drawn here.
+      const LOCK_ICON =
+        '<svg class="icon" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.2" y="7" width="9.6" height="6.4" rx="1.6"/><path d="M5.6 7V5.2a2.4 2.4 0 0 1 4.8 0V7"/></svg>';
+
+      // The header answers "which run am I looking at, and how far has it got"
+      // before anything else on the page: project, epic, progress, liveness.
+      function renderHead(state, enriched, runtime) {
+        const project = state.project || "afk run";
+        const epic = state.epic && state.epic.id ? state.epic : null;
+        const p = state.progress || { total: enriched.length, passed: 0 };
+        const count = (phase) => enriched.filter((t) => t.phase === phase).length;
+        const pct = (n) => (p.total ? (n / p.total) * 100 : 0);
+        const seg = (n, color) =>
+          n ? `<span style="width:${pct(n)}%;background:${color}"></span>` : "";
+
+        const orchestrator = runtime.orchestrator || { pid: null, alive: false };
+        const stale = runtime.staleTasks || [];
+        // Only a live process makes this run "running". A frozen state file with
+        // running tasks in it is the loudest thing on the page, not the calmest.
+        const age = runtime.startedAt ? since(runtime.startedAt) : null;
+        // A recorded fatal outranks "stale": it says when and why (#144).
+        const pill = orchestrator.alive
+          ? '<span class="pill pill-on"><span class="dot live"></span>running</span>'
+          : runtime.fatal
+            ? `<span class="pill pill-stale"><span class="dot"></span>orchestrator exited at ${esc(runtime.fatal.at)}: ${esc(runtime.fatal.message)}</span>`
+          : stale.length
+            ? `<span class="pill pill-stale"><span class="dot"></span>stale · pid ${esc(orchestrator.pid ?? "?")} is gone</span>`
+            : '<span class="pill pill-off"><span class="dot"></span>idle</span>';
+
+        const worktrees = runtime.worktrees || [];
+        const lanes = (state) => worktrees.filter((w) => w.state === state).length;
+        const bit = (text) => `<span>${text}</span>`;
+        const meta = [
+          state.branch ? bit(`<b>${esc(state.branch)}</b>`) : "",
+          // A dead run's age is the number that matters most, so this is not on
+          // the running branch of the pill.
+          age ? bit(`${age} elapsed`) : "",
+          bit(`${runtime.liveWorkers ?? 0} builder${(runtime.liveWorkers ?? 0) === 1 ? "" : "s"}`),
+          lanes("running") ? bit(`${lanes("running")} lane worktree${lanes("running") === 1 ? "" : "s"}`) : "",
+          stale.length ? bit(`<b>${stale.length} stale</b>`) : "",
+          lanes("leftover") ? bit(`${lanes("leftover")} leftover`) : "",
+          runtime.activeIntegrator?.alive
+            ? bit(`integrating ${esc(runtime.activeIntegrator.taskId)}`)
+            : bit("no integration"),
+          bit(`queue ${esc(runtime.integrationQueue?.join(", ") || "empty")}`),
+          bit(`state ${ago(runtime.updatedAt)}`),
+        ].filter(Boolean);
+
+        // The epic's own lifecycle, rendered by scheduler.mjs so the page and
+        // `afk status` cannot disagree. Loudest when it is waiting on a person:
+        // awaiting_acceptance is the one state the operator can personally clear.
+        const close = runtime.epicClose;
+        const note = close
+          ? `<div class="run-note${close.lifecycle === "awaiting_acceptance" ? " wants-you" : ""}">${esc(close.summary)}</div>`
+          : "";
+
+        document.title = epic
+          ? `#${epic.id} ${epic.title || ""} — ${project}`
+          : `${project} — AFK`;
+
+        // The bar's own legend, and the only place a phase count lives now: a
+        // grid of big numbers said the same thing twice, one card per status.
+        const tally = [
+          ["passed", count("done"), "var(--success)"],
+          ["building", count("active"), "var(--accent)"],
+          ["in review", count("review"), "var(--warn)"],
+          ["waiting for you", count("gate"), "var(--warn)"],
+          ["failed", count("failed") + count("stale"), "var(--danger)"],
+          ["waiting", count("ready") + count("blocked"), "var(--text3)"],
+        ]
+          .filter(([, n]) => n > 0)
+          .map(([name, n, color]) => `<span><i style="background:${color}"></i>${n} ${name}</span>`)
+          .join("");
+
+        document.getElementById("runHead").innerHTML =
+          `<div class="run-line"><h1>${esc(project)}</h1>${pill}</div>` +
+          `<div class="run-epic">` +
+          (epic ? `<span class="run-epic-n">#${esc(epic.id)}</span>` : "") +
+          `<span class="run-epic-t">${esc(epic ? epic.title || "untitled epic" : "no epic — ad-hoc run")}</span>` +
+          `<span class="run-count"><b>${p.passed}</b>/${p.total} passed</span></div>` +
+          `<div class="bar">${seg(count("done"), "var(--success)")}${seg(count("active"), "var(--accent)")}` +
+          `${seg(count("review") + count("gate"), "var(--warn)")}${seg(count("failed") + count("stale"), "var(--danger)")}</div>` +
+          `<div class="tally">${tally}</div>` +
+          `<div class="run-meta">${meta.join('<span class="sep">/</span>')}</div>` +
+          note;
+      }
+
+      // The epic's children, drawn as the DAG the `afk:` block declares: work
+      // flows DOWN, one band per dependency depth, an edge per `depends_on`.
+      // The epic itself is NOT a node here — the header already names it, and
+      // a root card repeating its title is the graph paying for a fact the
+      // page states twice.
+      function renderDag(state, enriched) {
+        const host = document.getElementById("dag");
+        const label = document.getElementById("dagLabel");
+        if (!enriched.length) {
+          host.innerHTML = "";
+          host.style.height = "0px";
+          label.hidden = true;
+          return;
+        }
+        label.hidden = false;
+        const H = 84, VGAP = 40, HGAP = 12, MIN_W = 156;
+        const levels = [];
+        for (const t of enriched) (levels[t.depth ?? 0] ??= []).push(t);
+        // A holed array spreads as `undefined` into Math.max and lays the whole
+        // graph out at NaN.
+        for (let i = 0; i < levels.length; i += 1) levels[i] ??= [];
+        // Phone first: the graph never scrolls sideways. A level too wide for
+        // the viewport wraps into stacked sub-rows of its own, so a depth stays
+        // one visual band and a node stays wide enough to read at 375px.
+        const width = Math.max(240, host.clientWidth || 860);
+        const perRow = Math.max(1, Math.floor((width + HGAP) / (MIN_W + HGAP)));
+        const widest = Math.min(perRow, Math.max(...levels.map((l) => l.length), 1));
+        const W = Math.min(
+          260,
+          Math.floor((width - (widest - 1) * HGAP) / widest),
+        );
+
+        const pos = new Map();
+        let nodes = "";
+        let y = 0;
+        for (const level of levels) {
+          if (!level.length) continue;
+          for (let i = 0; i < level.length; i += perRow) {
+            const chunk = level.slice(i, i + perRow);
+            // Centre every row against the page, so the graph reads as one
+            // column of work rather than a left-aligned ragged stack.
+            const left = (width - (chunk.length * (W + HGAP) - HGAP)) / 2;
+            chunk.forEach((t, c) => {
+              const x = left + c * (W + HGAP);
+              pos.set(t.id, { x, y });
+              nodes +=
+                `<div class="dag-node n-${t.phase}" data-task-id="${esc(t.id)}"` +
+                ` style="left:${x}px;top:${y}px;width:${W}px;height:${H}px">` +
+                `<div class="dag-head"><span class="task-id">#${esc(t.id)}</span>` +
+                (t.humanGated ? `<span class="lock" title="human-gated">${LOCK_ICON}</span>` : "") +
+                `<span class="badge ${badgeClass(t.phase)}">${esc(statusLabel(t))}</span></div>` +
+                `<div class="task-title">${esc(t.title)}</div>${pips(t)}</div>`;
+            });
+            y += H + VGAP;
+          }
+        }
+        const height = Math.max(0, y - VGAP);
+
+        // Down the page: out of the bottom edge, into the top edge, with the
+        // bend in the vertical gap between the two rows.
+        const edge = (from, to, done) => {
+          const a = pos.get(from), b = pos.get(to);
+          if (!a || !b) return "";
+          const x1 = a.x + W / 2, y1 = a.y + H, x2 = b.x + W / 2, y2 = b.y;
+          const mid = y1 + (y2 - y1) / 2;
+          return `<path d="M${x1} ${y1} C${x1} ${mid} ${x2} ${mid} ${x2} ${y2}" fill="none" stroke="${done ? "var(--success)" : "var(--border)"}" stroke-width="1.5" opacity="${done ? 0.85 : 1}"/>`;
+        };
+        const byId = new Map(enriched.map((t) => [t.id, t]));
+        let edges = "";
+        for (const t of enriched) {
+          for (const id of t.dependsOn.filter((id) => byId.has(id)))
+            edges += edge(id, t.id, byId.get(id).phase === "done");
+        }
+        host.style.height = `${height}px`;
+        host.innerHTML =
+          `<svg class="dag-edges" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${edges}</svg>` +
+          nodes;
+      }
+
+      async function load() {
+        try {
+          const [mRes, lRes, aRes] = await Promise.all([
+            fetch(API + "/state"),
+            fetch(API + "/log"),
+            fetch(API + "/agents"),
+          ]);
+          render(await mRes.json(), await lRes.text());
+          renderAgents(await aRes.json());
+        } catch (e) {
+          // A peer can die between the sweep that listed it and the click that
+          // selected it. Falling back to the dashboard that served this page
+          // beats leaving the operator on a blank page pointed at a dead port.
+          if (API !== HOME) {
+            const dead = API;
+            API = HOME;
+            document.getElementById("logPre").innerHTML =
+              '<span class="err">' + esc(dead) + " is gone — showing this machine's own run.</span>";
+            loadPeers();
+            load();
+            return;
+          }
+          document.getElementById("logPre").innerHTML =
+            '<span class="err">Cannot reach dashboard server at ' +
+            API +
+            ".\nRun: node /path/to/afk-claude/afk.mjs dashboard</span>";
+        }
+      }
+
+      let lastRender = null;
+      let resizeTimer = null;
+      let lastWidth = window.innerWidth;
+      window.addEventListener("resize", () => {
+        if (window.innerWidth === lastWidth) return;
+        lastWidth = window.innerWidth;
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => {
+          if (lastRender) renderDag(lastRender.state, lastRender.enriched);
+        }, 120);
+      });
+
+      function render(state, log) {
+        const tasks = state.tasks;
+        const enriched = tasks.map((t) => ({ ...t, phase: getPhase(t, tasks) }));
+
+        const runtime = state.runtime || {
+          activeWorkers: [],
+          integrationQueue: [],
+          activeIntegrator: null,
+          worktrees: [],
+          orchestrator: { pid: null, alive: false },
+        };
+        const worktrees = runtime.worktrees || [];
+        const byState = (s) => worktrees.filter((w) => w.state === s);
+        const stale = runtime.staleTasks || [];
+
+        renderHead(state, enriched, runtime);
+        // Kept so a rotation or a resized window relays the graph at the new
+        // width without waiting out the 5s poll.
+        lastRender = { state, enriched };
+        renderDag(state, enriched);
+
+        const worktreeGroup = (label, state, badge) => {
+          const items = byState(state);
+          return items.length
+            ? `<div class="group-label">${label}</div>` +
+              `<div class="worktrees">` +
+              items
+                .map(
+                  (w) =>
+                    `<div class="worktree-card" data-task-id="${w.taskId || ""}"><span class="task-id">${w.taskId || "—"}</span><span class="task-title">${w.name}</span><span class="deps">${w.branch || "detached"}</span><span class="badge ${badge}">${state}</span></div>`,
+                )
+                .join("") +
+              `</div>`
+            : "";
+        };
+        document.getElementById("worktrees").innerHTML =
+          worktreeGroup("Running worktrees", "running", "b-running") +
+          worktreeGroup("Stale worktrees (no live process)", "stale", "b-stale") +
+          worktreeGroup("Leftover worktrees (no live process, no active task)", "leftover", "b-leftover");
+
+        // The DAG above is the map: shape, status and stage for every ticket.
+        // Repeating all of it as a list was two renderings of one fact, so what
+        // is left here is the inbox — the tickets moving, stuck, or waiting on
+        // a person, carrying the detail a 196px node cannot hold: dependencies,
+        // gate results, and what the agent on the lane is doing right now.
+        const groupDefs = [
+          {
+            label: "Waiting for you",
+            items: enriched.filter((t) => t.phase === "gate"),
+          },
+          {
+            label: "Active",
+            items: enriched.filter((t) => t.phase === "active"),
+          },
+          {
+            label: "Stale (was running, no live process)",
+            items: enriched.filter((t) => t.phase === "stale"),
+          },
+          {
+            label: "In review",
+            items: enriched.filter((t) => t.phase === "review"),
+          },
+          {
+            label: "Failed",
+            items: enriched.filter((t) => t.phase === "failed"),
+          },
+        ].filter((g) => g.items.length);
+
+        let html = "";
+        for (const g of groupDefs) {
+          html += `<div class="group-label">${g.label}</div>`;
+          for (const t of g.items) {
+            const deps = t.dependsOn.length
+              ? `<span class="deps">&larr; ${t.dependsOn.join(", ")}</span>`
+              : "";
+            const lock = t.humanGated
+              ? `<span class="lock" title="human-gated">${LOCK_ICON}</span>`
+              : "";
+            html += `<div class="task" data-task-id="${esc(t.id)}"><span class="task-id">${esc(t.id)}</span><span class="task-title">${esc(t.title)}</span>${lock}${deps}${pips(t)}${progressMeta(t)}<span class="badge ${badgeClass(t.phase)}">${esc(statusLabel(t))}</span></div>`;
+          }
+        }
+        document.getElementById("groups").innerHTML = html;
+        document.getElementById("logPre").textContent = log || "(empty)";
+      }
+
+      // A run's non-lane agents. `recent` is a recency claim, not a liveness
+      // one — the runner records no pid for these — so the label says "wrote"
+      // rather than "running", and the log itself says whether it answered.
+      function renderAgents(agents) {
+        const host = document.getElementById("agents");
+        const label = document.getElementById("agentsLabel");
+        if (!Array.isArray(agents) || !agents.length) {
+          host.innerHTML = "";
+          label.hidden = true;
+          return;
+        }
+        label.hidden = false;
+        host.innerHTML = agents
+          .map(
+            (a) =>
+              `<div class="agent${a.recent ? " recent" : ""}" data-agent-id="${esc(a.key)}" data-agent-label="${esc(a.role)} ${esc(a.id)}">` +
+              `<span class="agent-role">${esc(a.role)}</span>` +
+              `<span class="agent-id">${esc(a.id)}</span>` +
+              `<span class="agent-when">${a.recent ? "writing now" : "wrote " + (since(a.updatedAt) ?? "?") + " ago"}</span></div>`,
+          )
+          .join("");
+      }
+
+      // Every dashboard listening on this machine, as tabs. The sweep is server
+      // side (one request, not 400 from the browser) and slow-moving, so it
+      // polls at a sixth the rate of the run itself.
+      function renderPeers(peers) {
+        const host = document.getElementById("peers");
+        // One run is not a choice. The strip appears when there is something to
+        // switch between.
+        if (!Array.isArray(peers) || peers.length < 2) {
+          host.hidden = true;
+          host.innerHTML = "";
+          return;
+        }
+        host.hidden = false;
+        host.innerHTML = peers
+          .map((peer) => {
+            // 127.0.0.1, the host every dashboard binds: `localhost` can resolve to
+            // ::1 and open another process listening on `::` at that port.
+            const origin = `http://127.0.0.1:${peer.port}`;
+            // On the hub port the page is reading the dashboard that HOLDS the
+            // hub, whose own port is not the one in the address bar. `self` is
+            // that dashboard naming itself, so the strip marks the right tab.
+            const here = origin === API || (API === HOME && peer.self);
+            // A dashboard is a long-lived process serving the code it booted
+            // with, and an AFK one can outlive several upgrades. One started
+            // before `/health` carried these fields OMITS them; a current one
+            // sends `epic: null` when there genuinely is no epic. Printing
+            // "no epic" for both states a fact about the run that this
+            // dashboard was never able to report.
+            const known = peer.epic !== undefined;
+            const epic = peer.epic?.id
+              ? `#${esc(peer.epic.id)}`
+              : known
+                ? "no epic"
+                : "restart to name it";
+            // Same trap one field over: an older dashboard cannot say whether
+            // its run is alive, and grey "idle" is a claim, not a blank.
+            const status = peer.status ?? (known ? "idle" : "unknown");
+            const colour =
+              status === "running"
+                ? "var(--success)"
+                : status === "stale"
+                  ? "var(--danger)"
+                  : "var(--text3)";
+            return (
+              `<button class="peer${here ? " on" : ""}" data-peer="${origin}"` +
+              ` title="${esc(peer.root ?? "")} — ${status === "unknown" ? "started before this dashboard could report its run; restart it to fill this in" : status}">` +
+              `<span class="dot${status === "running" ? " live" : ""}${status === "unknown" ? " hollow" : ""}" style="color:${colour}"></span>` +
+              `<span>${esc(peer.project || String(peer.root ?? "").split("/").filter(Boolean).at(-1) || "run")}</span>` +
+              `<span class="peer-epic${known ? "" : " unknown"}">${epic}</span></button>`
+            );
+          })
+          .join("");
+      }
+
+      document.addEventListener("click", (e) => {
+        const tab = e.target.closest("[data-peer]");
+        if (!tab || tab.classList.contains("on")) return;
+        API = tab.dataset.peer;
+        hideTaskLog();
+        load();
+        loadPeers();
+      });
+
+      async function loadPeers() {
+        // Embedded in a hub tab: no strip to fill, so no 400-port sweep either.
+        if (document.body.hasAttribute("data-embed")) return;
+        try {
+          // Always from the dashboard that served this page: a peer's sweep
+          // finds the same set, and asking it would break when that peer dies.
+          const res = await fetch(HOME + "/peers");
+          renderPeers(await res.json());
+        } catch {
+          document.getElementById("peers").hidden = true;
+        }
+      }
+
+      // ── per-task runner logs ─────────────────────────────────────────────
+      // Cards are re-rendered on every poll, so the click handler is delegated
+      // from the document rather than bound per card.
+      let openTask = null;
+      let openEndpoint = "/task-log";
+      let openAttempt = "";
+      let taskTimer = null;
+
+      document.addEventListener("click", (e) => {
+        const agent = e.target.closest("[data-agent-id]");
+        if (agent) {
+          showTaskLog(agent.dataset.agentId, agent.dataset.agentLabel, "/agent-log");
+          return;
+        }
+        const card = e.target.closest("[data-task-id]");
+        if (!card || !card.dataset.taskId) return;
+        const title = card.querySelector(".task-title");
+        showTaskLog(card.dataset.taskId, title ? title.textContent : "", "/task-log");
+      });
+      document
+        .getElementById("taskLogClose")
+        .addEventListener("click", hideTaskLog);
+      document.getElementById("taskLog").addEventListener("click", (e) => {
+        if (e.target.id === "taskLog") hideTaskLog();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") hideTaskLog();
+      });
+      document
+        .getElementById("taskLogAttempts")
+        .addEventListener("click", (e) => {
+          if (!e.target.dataset.attempt) return;
+          openAttempt = e.target.dataset.attempt;
+          loadTaskLog();
+        });
+
+      // The phase walk `.afk-report.json` used to overwrite: one chip per phase
+      // the agent reported, with the time it entered it and how long it stayed.
+      // The last chip is the phase it is IN, so its duration is still running —
+      // it is labelled from the clock, not left looking finished.
+      function renderPhases(phases) {
+        const host = document.getElementById("taskLogPhases");
+        if (!Array.isArray(phases) || !phases.length) {
+          host.innerHTML = "";
+          host.hidden = true;
+          return;
+        }
+        host.hidden = false;
+        host.innerHTML = phases
+          .map((step, i) => {
+            const at = Date.parse(step.at);
+            const next = phases[i + 1] ? Date.parse(phases[i + 1].at) : null;
+            const last = i === phases.length - 1;
+            const ended = step.status === "done" || step.status === "failed";
+            // `done` and `failed` are instants, not phases: they end the walk
+            // and hold nothing. Measuring them against the clock printed a
+            // duration that grew forever, and a negative one for a walk
+            // recorded on another machine's clock.
+            const until = ended ? null : (next ?? Date.now());
+            const spent = Number.isFinite(at) && until != null ? until - at : NaN;
+            const held = spent > 0 ? fmtDuration(spent) : null;
+            const clock = Number.isFinite(at)
+              ? new Date(at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : "?";
+            const name =
+              step.phase ||
+              (step.status === "done"
+                ? "done"
+                : step.status === "failed"
+                  ? "failed"
+                  : step.status);
+            const count = step.step && step.total ? ` ${step.step}/${step.total}` : "";
+            const klass = step.status === "failed"
+              ? " failed"
+              : last && !ended
+                ? " now"
+                : "";
+            return (
+              `<span class="phase-step${klass}" title="${esc(step.at)}${step.reason ? " — " + esc(step.reason) : ""}">` +
+              `${esc(name)}${esc(count)}` +
+              `<span class="phase-when">${clock}${held ? " · " + held : ""}</span></span>`
+            );
+          })
+          .join("");
+      }
+
+      function showTaskLog(id, title, endpoint = "/task-log") {
+        openTask = id;
+        openEndpoint = endpoint;
+        openAttempt = "";
+        document.getElementById("taskLogId").textContent = id;
+        document.getElementById("taskLogTitle").textContent = title || "";
+        document.getElementById("taskLogAttempts").innerHTML = "";
+        document.getElementById("taskLogSummary").textContent = "";
+        renderPhases([]);
+        document.getElementById("taskLogPre").textContent = "loading...";
+        document.getElementById("taskLog").hidden = false;
+        loadTaskLog();
+        clearInterval(taskTimer);
+        taskTimer = setInterval(loadTaskLog, 3000);
+      }
+
+      function hideTaskLog() {
+        openTask = null;
+        clearInterval(taskTimer);
+        taskTimer = null;
+        document.getElementById("taskLog").hidden = true;
+      }
+
+      async function loadTaskLog() {
+        if (!openTask) return;
+        const id = openTask;
+        try {
+          const res = await fetch(
+            API +
+              openEndpoint +
+              "?id=" +
+              encodeURIComponent(id) +
+              (openAttempt ? "&attempt=" + encodeURIComponent(openAttempt) : ""),
+          );
+          const data = await res.json();
+          if (openTask !== id) return;
+          if (data.error) {
+            document.getElementById("taskLogSummary").textContent = "";
+            renderPhases([]);
+            document.getElementById("taskLogPre").innerHTML =
+              '<span class="err">' + data.error + "</span>";
+            return;
+          }
+          openAttempt = data.attempt;
+          document.getElementById("taskLogAttempts").innerHTML = data.attempts
+            .map(
+              (a) =>
+                `<button class="attempt ${a === data.attempt ? "on" : ""}" data-attempt="${a}">${a}</button>`,
+            )
+            .join(" ");
+          renderPhases(data.phases);
+          document.getElementById("taskLogSummary").textContent =
+            data.summary +
+            (data.truncated
+              ? `\n(tailing the last 256 KB of ${(data.bytes / 1024).toFixed(0)} KB)`
+              : "");
+          const pre = document.getElementById("taskLogPre");
+          const atBottom =
+            pre.parentElement.scrollTop + pre.parentElement.clientHeight >=
+            pre.parentElement.scrollHeight - 40;
+          pre.textContent =
+            data.timeline +
+            (data.output ? "\n\n── agent-output.log ──\n" + data.output : "");
+          if (atBottom)
+            pre.parentElement.scrollTop = pre.parentElement.scrollHeight;
+        } catch (e) {
+          if (openTask === id)
+            document.getElementById("taskLogPre").innerHTML =
+              '<span class="err">Cannot reach ' + API + "</span>";
+        }
+      }
+
+      load();
+      setInterval(load, 5000);
+      loadPeers();
+      setInterval(loadPeers, 30000);
+    </script>
+  </body>
+</html>

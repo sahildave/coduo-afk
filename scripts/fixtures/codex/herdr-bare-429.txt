@@ -1,0 +1,3 @@
+Codex
+
+Error: 429 Too Many Requests. Retrying in 2s.

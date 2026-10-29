@@ -1,0 +1,25 @@
+fix: closeout findings for #625
+
+docs/developer/macos-signing.md
+docs/progress.md
+afk: update task status (627 passed)
+
+docs/progress.md
+Merge task 627: The release runbook describes the path that actually runs
+afk: update task status (626 passed)
+
+docs/progress.md
+task 627: The release runbook describes the path that actually runs
+
+.github/workflows/release.yml
+docs/developer/desktop-updates.md
+docs/developer/macos-signing.md
+docs/developer/releases.md
+scripts/prepare-release.js
+Merge task 626: Release scripts refuse what they cannot verify, and name artifacts the feed can consume
+task 626: Release scripts refuse what they cannot verify, and name artifacts the feed can consume
+
+scripts/release/macos-signing-cert.sh
+scripts/release/release-local.sh
+scripts/release/updater-asset-name.mjs
+scripts/release/updater-asset-name.test.mjs

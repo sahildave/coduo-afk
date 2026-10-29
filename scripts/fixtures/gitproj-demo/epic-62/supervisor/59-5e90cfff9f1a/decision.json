@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "event": "lane_failed",
+  "status": "ok",
+  "classification": "bad-ticket",
+  "confidence": "high",
+  "recommendation": "salvage",
+  "reasoning": "no signal the runner can read decides this — runs/59/builder-2/prompt.md:6 declares `Required checks: node -e \"process.exit(1)\"` — a command that exits non-zero unconditionally, so no implementation can ever satisfy it. This is proof, not inference, and it overturns the runner's 'unclear' (which only saw checksRun:0 / failedCheck:null and had no readable signal). The correlation is exact: tasks 58 and 61 carried `node src/greet.js` and both passed; tasks 59 and 60 carried the poison check and both failed. The work itself is done — verification.json lists producedFiles ['src/ping.js'], and running that file in the lane worktree prints exactly 'Pong from AFK lane 005' at exit 0, satisfying every acceptance criterion. The builder's own report says 'implementation complete; required check unsatisfiable'. Not infra: tokens show input 28 / output 2423 / cacheRead 473221, so the agent reached the API and did real work; authFailure, agentDied, rateLimited and timedOut are all false. Salvage rather than retry-clean, because a reset re-runs the same impossible check and burns another lane. Same defect and same verdict already recorded for sibling task 60 in state.json.",
+  "answer": "Tickets 59 and 60 were written with a required check of `node -e \"process.exit(1)\"`, which fails by definition, so retrying them can never go green. Lane 59's actual work is finished and correct — src/ping.js sits in its worktree and prints 'Pong from AFK lane 005' exactly as the ticket asked — it was only marked failed by that impossible check. Fix the check field on both tickets in the morning; nothing is broken, no work is lost, and the run has correctly halted itself.",
+  "resetsAt": null,
+  "wake": false,
+  "actions": [],
+  "problems": [],
+  "source": "supervisor",
+  "prior": {
+    "classification": "unclear",
+    "confidence": "low",
+    "recommendation": "leave",
+    "locked": false,
+    "why": [
+      "no signal the runner can read decides this"
+    ]
+  },
+  "consulted": true,
+  "evidence": {
+    "event": "lane_failed",
+    "epic": {
+      "id": "62",
+      "title": "Add two more commands (harness failure test)"
+    },
+    "branch": "afk/task-59",
+    "at": "2026-08-24T02:58:10.965Z",
+    "taskId": "59",
+    "title": "Add ping command script",
+    "attempt": 2,
+    "agentExitCode": 1,
+    "timedOut": false,
+    "durationMs": 105868,
+    "authFailure": false,
+    "agentDied": false,
+    "rateLimited": false,
+    "producedFiles": 1,
+    "keptOutsideDeclaredPaths": [],
+    "failedCheck": null,
+    "checksRun": 0,
+    "recentFailures": [
+      {
+        "taskId": "60",
+        "durationMs": 69257
+      },
+      {
+        "taskId": "59",
+        "durationMs": 105868
+      }
+    ],
+    "artifacts": {},
+    "tail": ""
+  },
+  "ranAt": "2026-08-24T02:58:10.965Z",
+  "durationMs": 80425,
+  "artifacts": {
+    "prompt": "/Users/developer/code/projects/gitproj-demo/.afk/supervisor/59-5e90cfff9f1a/prompt.md",
+    "stream": "/Users/developer/code/projects/gitproj-demo/.afk/supervisor/59-5e90cfff9f1a/stream.jsonl",
+    "decision": "/Users/developer/code/projects/gitproj-demo/.afk/supervisor/59-5e90cfff9f1a/decision.json"
+  },
+  "prose": "I'll read the actual run state before accepting the runner's \"unclear\".\n\nThe agent reported \"required check unsatisfiable\". Let me see what check the ticket demands.\n\nThe check is `node -e \"process.exit(1)\"` — unconditionally exit 1. Let me confirm task 60 is the same shape and check the runner state.\n\nClean correlation: the two lanes with `node src/greet.js` passed; the two with `node -e \"process.exit(1)\"` failed. Let me confirm lane 59's work is actually complete and salvageable.\n\nConfirmed. Corrected reading of the earlier grep: 58 and 61 carried `node src/greet.js` and both passed; 59 and 60 carried `node -e \"process.exit(1)\"` and both failed. The split is perfectly correlated with the check, not with the work.\n\nThe decisive evidence is `runs/59/builder-2/prompt.md:6` — `Required checks: node -e \"process.exit(1)\"`. That command exits 1 unconditionally by construction; no implementation can satisfy it. This overturns the runner's \"unclear/leave\": the runner saw `checksRun: 0` and `failedCheck: null` and had no signal, but the check text itself is proof.\n\nLane 59's work is complete and correct: `producedFiles: [\"src/ping.js\"]`, and running it prints `Pong from AFK lane 005` — exactly the acceptance criterion — at exit 0. The agent said so itself: *\"failed (implementation complete; required check unsatisfiable)\"*. This matches the verdict already recorded in `state.json` for sibling task 60, which is the same defect.\n\nThe run has already halted itself (`lastHalt: \"2 tasks failed in a row (latest 59)\"`). A reset would burn another lane against the same impossible check, so I'm not proposing one — the fix is a ticket edit, which is a human's job and mine to stay out of. Nothing is at risk: both worktrees hold finished work.\n\n```json\n{\n  \"classification\": \"bad-ticket\",\n  \"confidence\": \"high\",\n  \"recommendation\": \"salvage\",\n  \"reasoning\": \"runs/59/builder-2/prompt.md:6 declares `Required checks: node -e \\\"process.exit(1)\\\"` — a command that exits non-zero unconditionally, so no implementation can ever satisfy it. This is proof, not inference, and it overturns the runner's 'unclear' (which only saw checksRun:0 / failedCheck:null and had no readable signal). The correlation is exact: tasks 58 and 61 carried `node src/greet.js` and both passed; tasks 59 and 60 carried the poison check and both failed. The work itself is done — verification.json lists producedFiles ['src/ping.js'], and running that file in the lane worktree prints exactly 'Pong from AFK lane 005' at exit 0, satisfying every acceptance criterion. The builder's own report says 'implementation complete; required check unsatisfiable'. Not infra: tokens show input 28 / output 2423 / cacheRead 473221, so the agent reached the API and did real work; authFailure, agentDied, rateLimited and timedOut are all false. Salvage rather than retry-clean, because a reset re-runs the same impossible check and burns another lane. Same defect and same verdict already recorded for sibling task 60 in state.json.\",\n  \"answer\": \"Tickets 59 and 60 were written with a required check of `node -e \\\"process.exit(1)\\\"`, which fails by definition, so retrying them can never go green. Lane 59's actual work is finished and correct — src/ping.js sits in its worktree and prints 'Pong from AFK lane 005' exactly as the ticket asked — it was only marked failed by that impossible check. Fix the check field on both tickets in the morning; nothing is broken, no work is lost, and the run has correctly halted itself.\",\n  \"resetsAt\": null,\n  \"wake\": false,\n  \"actions\": []\n}\n```"
+}

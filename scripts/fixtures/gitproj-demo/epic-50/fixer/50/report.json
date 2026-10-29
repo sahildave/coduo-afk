@@ -1,0 +1,118 @@
+{
+  "version": 1,
+  "ranAt": "2026-08-24T01:13:06.143Z",
+  "durationMs": 88617,
+  "items": [
+    {
+      "id": "F1",
+      "source": "must-fix",
+      "title": "Remove runs/45..49/*.json from the branch and add runs/ to .gitignore, or state explicitly that committing runner artifacts is intended.",
+      "detail": null,
+      "file": null,
+      "sources": [
+        "must-fix"
+      ]
+    },
+    {
+      "id": "F2",
+      "source": "must-fix",
+      "title": "Confirm a follow-up ticket actually wires src/format.js into the CLI, or drop the file — as merged it is exported, uncalled and untested.",
+      "detail": null,
+      "file": null,
+      "sources": [
+        "must-fix"
+      ]
+    },
+    {
+      "id": "F3",
+      "source": "must-fix",
+      "title": "Add a test covering src/cli.js's unknown-command and no-argument paths; the README documents a contract nothing verifies.",
+      "detail": null,
+      "file": null,
+      "sources": [
+        "must-fix"
+      ]
+    },
+    {
+      "id": "F4",
+      "source": "major finding (spec)",
+      "title": "AFK runner artifacts committed onto the feature branch",
+      "detail": "runs/45..49/verification.json and runs/45..49/integration-verification.json add ~310 lines of bookkeeping no criterion asked for. They pollute the PR diff and will conflict on every subsequent epic that reuses the same run ids. They belong in .gitignore.",
+      "file": "runs/",
+      "sources": [
+        "major finding (spec)"
+      ]
+    },
+    {
+      "id": "F5",
+      "source": "major finding (standards)",
+      "title": "src/format.js has zero non-test callers and no test",
+      "detail": "An exported function reachable from nothing, and the smoke suite does not exercise it either, so no gate would notice if it broke or if the follow-up ticket never lands. This is the control-wired-to-nothing pattern: typecheck, lint and tests all pass over dead code.",
+      "file": "src/format.js",
+      "sources": [
+        "major finding (standards)"
+      ]
+    },
+    {
+      "id": "F6",
+      "source": "major finding (standards)",
+      "title": "The dispatcher's error branch is untested",
+      "detail": "src/cli.js holds the only conditional logic in the diff (unknown command and no-argument both exit 1 with a usage line on stderr) and README documents that contract, but criterion 47.5 required the smoke suite to skip cli.js entirely. Nothing in the repo guards the behaviour the README promises.",
+      "file": "test/smoke.test.mjs",
+      "sources": [
+        "major finding (standards)"
+      ]
+    }
+  ],
+  "rawPath": "/Users/developer/code/projects/gitproj-demo/.afk/fixer/50/stream.jsonl",
+  "rawTail": "it is a repo-wide convention change no criterion asked for.\\\"\\n    },\\n    {\\n      \\\"id\\\": \\\"F2\\\",\\n      \\\"reason\\\": \\\"Confirmed no follow-up ticket wires src/format.js in (nothing in src/, docs/, README or planning references it; manifest task 007 is an unrelated quote script), but dropping a deliverable that task 46 requested and that passed review needs a human decision — I added the missing test instead.\\\"\\n    },\\n    {\\n      \\\"id\\\": \\\"F4\\\",\\n      \\\"reason\\\": \\\"Same evidence as F1; the stated conflict risk also does not apply, since 45..49 are GitHub issue numbers and the older runs/001..006 use a separate lane-numbering scheme.\\\"\\n    }\\n  ]\\n}\\n```\"}],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":537,\"cache_read_input_tokens\":44386,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":537},\"output_tokens\":1,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"},\"diagnostics\":null,\"context_management\":null},\"parent_tool_use_id\":null,\"session_id\":\"42ae100f-5192-46eb-8329-2bfcd88422e4\",\"uuid\":\"b597d0c3-4e06-41f6-943d-57115daa5c6b\",\"timestamp\":\"2026-08-24T01:13:03.055Z\",\"request_id\":\"req_011CeLggqyQQL38UXz3JYf14\"}\n{\"type\":\"system\",\"subtype\":\"post_turn_summary\",\"summarizes_uuid\":\"b597d0c3-4e06-41f6-943d-57115daa5c6b\",\"status_category\":\"review_ready\",\"status_detail\":\"resolved 3 findings (F3, F5, F6); deferred 3 (F1, F2, F4 — repo convention/scope calls)\",\"needs_action\":\"\",\"uuid\":\"31a2ab96-754e-455d-bc10-e0b381f806bd\",\"session_id\":\"42ae100f-5192-46eb-8329-2bfcd88422e4\"}\n{\"is_error\":false,\"duration_api_ms\":81640,\"num_turns\":9,\"stop_reason\":\"end_turn\",\"session_id\":\"42ae100f-5192-46eb-8329-2bfcd88422e4\",\"total_cost_usd\":0.6242865000000001,\"usage\":{\"input_tokens\":18,\"cache_creation_input_tokens\":31604,\"cache_read_input_tokens\":331913,\"output_tokens\":5688,\"output_tokens_details\":{\"thinking_tokens\":2082},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":31604,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1668,\"cache_read_input_tokens\":44386,\"cache_creation_input_tokens\":537,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":537},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-opus-5\":{\"inputTokens\":18,\"outputTokens\":5688,\"cacheReadInputTokens\":331913,\"cacheCreationInputTokens\":31604,\"webSearchRequests\":0,\"costUSD\":0.6242865000000001,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"canonicalModel\":\"claude-opus-5\",\"provider\":\"firstParty\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"**Fixed 3 of 6, deferred 3 — and the two I deferred are ones where the verifier's premise doesn't hold or the call isn't mine.**\\n\\n**→ F3, F5, F6 fixed with one commit to `test/smoke.test.mjs`.** Four new tests: `cli.js` with no argument and with an unknown command (both asserted to exit 1, print nothing on stdout, and emit the exact usage line README promises), one asserting a known command actually dispatches, and a unit test for `format.js` covering both branches. 10/10 pass; `node src/greet.js` still exits 0.\\n\\n**→ F1 and F4 deferred, because the premise is wrong.** `runs/` is not new to this branch. `main` already tracks `runs/001..006` including logs, prompts and reports, so committing runner artifacts is this repo's established practice, not something epic #50 introduced. Adding `runs/` to `.gitignore` would not untrack the 24 files already on `main`, and deleting them is a repo-wide convention change no criterion asked for. The conflict risk the verifier cites also doesn't apply: `45..49` are issue numbers, and the old lane numbering is a separate scheme. Per the finding's own second branch: **committing runner artifacts is intended here.**\\n\\n**→ F2 deferred, and this is the one worth a human's attention.** I checked, and there is no follow-up ticket that wires `src/format.js` in. `planning/manifest.json` task 007 is a quote script, unrelated, and nothing in `src/`, `docs/`, `README.md` or `planning/` mentions `format` at all. So the file's own comment, \\\"a later ticket wires it in\\\", is currently false. Dropping a deliverable that task 46 asked for and that passed review is a call I shouldn't make in a closeout pass, so I left the file and closed the gate half of it instead: it now has a test, so a breakage would be caught. **You still have to decide: file the wiring ticket, or delete the file.**\\n\\n**Also found:** `README.md` documents the test command as `node --test test/smoke.test.mjs`, so the new tests are picked up with no doc change needed.\\n\\n```json\\n{\\n  \\\"summary\\\": \\\"Added four tests to test/smoke.test.mjs covering src/cli.js's no-argument and unknown-command paths (exit 1, empty stdout, exact usage line on stderr), a positive dispatch case, and both branches of src/format.js. Committed as dba6ee6. Left the runs/ artifacts in place because main already tracks runs/001..006 with logs, prompts and reports, making committed runner output this repo's existing convention rather than something this branch introduced. Left src/format.js in place because deleting an accepted, passed deliverable is a human decision, but confirmed no follow-up ticket wires it in and that its own comment claiming one does is false. Checks: node src/greet.js exits 0, node --test test/smoke.test.mjs passes 10/10.\\\",\\n  \\\"fixed\\\": [\\n    {\\n      \\\"id\\\": \\\"F3\\\",\\n      \\\"detail\\\": \\\"Added tests asserting src/cli.js exits 1 with empty stdout and the exact README usage line on stderr for both no-argument and unknown-command invocations, plus a positive case asserting a known command dispatches and prints. The README contract is now verified.\\\",\\n      \\\"files\\\": [\\\"test/smoke.test.mjs\\\"]\\n    },\\n    {\\n      \\\"id\\\": \\\"F5\\\",\\n      \\\"detail\\\": \\\"Added a unit test importing format from src/format.js and asserting both branches (passthrough with no opts, with empty opts, and JSON wrapping when opts.json is set). The function is no longer reachable from nothing by any gate; a breakage would now fail the suite. The zero-caller half is deferred as F2.\\\",\\n      \\\"files\\\": [\\\"test/smoke.test.mjs\\\"]\\n    },\\n    {\\n      \\\"id\\\": \\\"F6\\\",\\n      \\\"detail\\\": \\\"Same tests as F3 — the dispatcher's error branch is now exercised by the smoke suite, closing the gap criterion 47.5 left when it excluded cli.js.\\\",\\n      \\\"files\\\": [\\\"test/smoke.test.mjs\\\"]\\n    }\\n  ],\\n  \\\"deferred\\\": [\\n    {\\n      \\\"id\\\": \\\"F1\\\",\\n      \\\"reason\\\": \\\"Stating the second branch explicitly: committing runner artifacts is intended — main already tracks runs/001..006 including agent logs, prompts and reports, so this predates the branch and untracking it is a repo-wide convention change no criterion asked for.\\\"\\n    },\\n    {\\n      \\\"id\\\": \\\"F2\\\",\\n      \\\"reason\\\": \\\"Confirmed no follow-up ticket wires src/format.js in (nothing in src/, docs/, README or planning references it; manifest task 007 is an unrelated quote script), but dropping a deliverable that task 46 requested and that passed review needs a human decision — I added the missing test instead.\\\"\\n    },\\n    {\\n      \\\"id\\\": \\\"F4\\\",\\n      \\\"reason\\\": \\\"Same evidence as F1; the stated conflict risk also does not apply, since 45..49 are GitHub issue numbers and the older runs/001..006 use a separate lane-numbering scheme.\\\"\\n    }\\n  ]\\n}\\n```\",\"ttft_ms\":2195,\"ttft_stream_ms\":1450,\"time_to_request_ms\":75,\"type\":\"result\",\"duration_ms\":85909,\"uuid\":\"0f9504a6-bf03-4a82-bbf9-7938b0760f95\"}\n{\"type\":\"system\",\"subtype\":\"task_summary\",\"detail\":null,\"uuid\":\"aa7c0b2a-0686-43ce-9cd7-92c72ff37c48\",\"session_id\":\"42ae100f-5192-46eb-8329-2bfcd88422e4\"}\n",
+  "status": "ok",
+  "problems": [],
+  "summary": "Added four tests to test/smoke.test.mjs covering src/cli.js's no-argument and unknown-command paths (exit 1, empty stdout, exact usage line on stderr), a positive dispatch case, and both branches of src/format.js. Committed as dba6ee6. Left the runs/ artifacts in place because main already tracks runs/001..006 with logs, prompts and reports, making committed runner output this repo's existing convention rather than something this branch introduced. Left src/format.js in place because deleting an accepted, passed deliverable is a human decision, but confirmed no follow-up ticket wires it in and that its own comment claiming one does is false. Checks: node src/greet.js exits 0, node --test test/smoke.test.mjs passes 10/10.",
+  "fixed": [
+    {
+      "id": "F3",
+      "title": "Add a test covering src/cli.js's unknown-command and no-argument paths; the README documents a contract nothing verifies.",
+      "detail": "Added tests asserting src/cli.js exits 1 with empty stdout and the exact README usage line on stderr for both no-argument and unknown-command invocations, plus a positive case asserting a known command dispatches and prints. The README contract is now verified.",
+      "files": [
+        "test/smoke.test.mjs"
+      ]
+    },
+    {
+      "id": "F5",
+      "title": "src/format.js has zero non-test callers and no test",
+      "detail": "Added a unit test importing format from src/format.js and asserting both branches (passthrough with no opts, with empty opts, and JSON wrapping when opts.json is set). The function is no longer reachable from nothing by any gate; a breakage would now fail the suite. The zero-caller half is deferred as F2.",
+      "files": [
+        "test/smoke.test.mjs"
+      ]
+    },
+    {
+      "id": "F6",
+      "title": "The dispatcher's error branch is untested",
+      "detail": "Same tests as F3 — the dispatcher's error branch is now exercised by the smoke suite, closing the gap criterion 47.5 left when it excluded cli.js.",
+      "files": [
+        "test/smoke.test.mjs"
+      ]
+    }
+  ],
+  "deferred": [
+    {
+      "id": "F1",
+      "title": "Remove runs/45..49/*.json from the branch and add runs/ to .gitignore, or state explicitly that committing runner artifacts is intended.",
+      "reason": "Stating the second branch explicitly: committing runner artifacts is intended — main already tracks runs/001..006 including agent logs, prompts and reports, so this predates the branch and untracking it is a repo-wide convention change no criterion asked for.",
+      "kind": "needs_human"
+    },
+    {
+      "id": "F2",
+      "title": "Confirm a follow-up ticket actually wires src/format.js into the CLI, or drop the file — as merged it is exported, uncalled and untested.",
+      "reason": "Confirmed no follow-up ticket wires src/format.js in (nothing in src/, docs/, README or planning references it; manifest task 007 is an unrelated quote script), but dropping a deliverable that task 46 requested and that passed review needs a human decision — I added the missing test instead.",
+      "kind": "needs_human"
+    },
+    {
+      "id": "F4",
+      "title": "AFK runner artifacts committed onto the feature branch",
+      "reason": "Same evidence as F1; the stated conflict risk also does not apply, since 45..49 are GitHub issue numbers and the older runs/001..006 use a separate lane-numbering scheme.",
+      "kind": "needs_human"
+    }
+  ]
+}

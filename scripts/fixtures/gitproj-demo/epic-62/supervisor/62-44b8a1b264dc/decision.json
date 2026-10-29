@@ -1,0 +1,67 @@
+{
+  "version": 1,
+  "event": "epic_ended",
+  "status": "skipped",
+  "classification": "halted",
+  "confidence": "high",
+  "recommendation": "wake-human",
+  "reasoning": "the run halted: 2 tasks failed in a row (latest 59)",
+  "answer": "",
+  "resetsAt": null,
+  "wake": true,
+  "actions": [],
+  "problems": [],
+  "source": "runner",
+  "prior": {
+    "classification": "halted",
+    "confidence": "high",
+    "recommendation": "wake-human",
+    "locked": true,
+    "why": [
+      "the run halted: 2 tasks failed in a row (latest 59)"
+    ]
+  },
+  "consulted": false,
+  "evidence": {
+    "event": "epic_ended",
+    "epic": {
+      "id": "62",
+      "title": "Add two more commands (harness failure test)"
+    },
+    "branch": "feat/failure-probe",
+    "at": "2026-08-24T02:59:31.393Z",
+    "halted": "2 tasks failed in a row (latest 59)",
+    "tally": {
+      "status": "incomplete",
+      "reason": "task(s) 59, 60 did not pass",
+      "passed": [
+        "58",
+        "61"
+      ],
+      "failed": [
+        "59",
+        "60"
+      ],
+      "pending": [],
+      "awaiting": [],
+      "epicClose": "open",
+      "outcome": null
+    },
+    "run": {
+      "tasks": {
+        "58": "passed",
+        "59": "failed",
+        "60": "failed",
+        "61": "passed"
+      },
+      "inFlight": [],
+      "integrating": null,
+      "integrationQueue": []
+    },
+    "verifier": null
+  },
+  "ranAt": "2026-08-24T02:59:31.393Z",
+  "durationMs": null,
+  "artifacts": {},
+  "prose": ""
+}

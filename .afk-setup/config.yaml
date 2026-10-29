@@ -1,0 +1,122 @@
+# How this stack is verified. Human-edited, committed, read-only to the runner.
+# Everything commented out below is optional — uncomment a line to use it.
+
+# The per-lane gate: every lane runs this before its work can integrate. Keep it
+# to commands that are cheap and that touch nothing shared on the host. Lanes run
+# in parallel, so a command here that reaches ONE thing on the machine — a local
+# database, a fixed port, a simulator, a derived-data path, a lock directory —
+# makes every other lane queue behind it, and the queue reads as a slow or flaky
+# gate rather than as contention. Two ways out: key the resource per lane, naming
+# it from `$PWD` (see the teardown/finish examples below), or move the command
+# down to `baselineChecks`.
+defaultChecks:
+  - node afk.mjs selftest
+
+# Read by THREE gates, and self-sufficient in all of them: the branch-cut
+# baseline and the closeout fix gate both run `baselineChecks ?? defaultChecks`
+# ALONE, and every task's integration runs `task.checks u baselineChecks` — where
+# a task that narrows its own `checks:` does NOT also get `defaultChecks`. So
+# write the full list the repo needs verified, lane commands included. Repeating
+# them is free at integration (it is a Set union) and load-bearing in the other
+# two gates: a list holding only the commands you kept out of the lane leaves the
+# branch-cut baseline running those and nothing else.
+#
+# `defaultChecks` is the list N lanes run at once, and the only one with a lever
+# on parallel load. Leave a command out of it when running it at integration and
+# at the branch cut is enough — a full build, a browser suite, anything holding a
+# host-wide lock — and keep it here regardless. A command in `defaultChecks` runs
+# twice per integrated task, once in the lane and once post-merge; that is
+# inherent and nothing written here changes it.
+baselineChecks:
+  - node afk.mjs selftest
+
+worktreeSetup:
+  link: []
+  copy: []
+  run: []
+  # The other end of a lane's life, for a resource a check creates that the
+  # runner cannot see (a per-lane simulator, a derived-data cache). Same `sh -c`
+  # and `$PWD` as `run`. `teardown` runs after the lane's checks, pass or fail
+  # or builder killed, and in the root checkout after post-merge checks;
+  # `finish` runs once per lane worktree just before it is removed. Exit codes
+  # are logged and never change an outcome; a hook is cut off after 60s.
+  # teardown: ['xcrun simctl shutdown "lane-$(printf %s "$PWD" | shasum | cut -c1-8)" || true']
+  # finish:   ['xcrun simctl delete   "lane-$(printf %s "$PWD" | shasum | cut -c1-8)" || true']
+
+maxParallel: 6
+
+# Whether the product has users yet: pre-launch or launched. Read by the stop
+# forecast and by the merge guardrails. The owner changes it on launch day; no agent
+# does. Mirrors "## Launch status" in AGENTS.md.
+launchStatus: pre-launch
+
+# This repo has no CI. `afk merge`'s ci-green guard then needs a green gate or
+# baseline recorded at the PR head instead of PR checks. The owner, 19 Oct 2026.
+merge:
+  ci: none
+
+# Paths whose change widens what an agent may do unattended, so a bad one is not
+# undone by a revert after it has run. A task naming one needs `gate: before` or
+# a waiver on the epic, and the merge verb refuses a PR that touches one.
+oneWayDoors:
+  permissions: [scripts/roles.mjs, scripts/permission-broker.mjs, .claude/settings.json]
+  merge: [scripts/merge.mjs, scripts/merge-guards.mjs]
+
+# Which top-level keys of a protected JSON file a lane may edit. The default
+# below is applied when this key is absent; `package.json: []` reverts every
+# edit, as the runner did before. A reverted package.json or lockfile blocks the
+# lane, because its checks ran against a chain that file no longer describes.
+# protectedEdits:
+#   package.json: [scripts]
+
+# Which produced files must be registered in package.json's `scripts` block by
+# hand. A lane that writes one and never wires it in reports green over a file
+# that never ran, which is what three live epics shipped. The default below is
+# applied when this key is absent; a glob-discovered suite needs no entry and
+# must not be listed here.
+# testScripts: ["scripts/test-*"]
+
+# When an epic closes, the runner removes that epic's own `.afk-runs/<id>/` and
+# `.agents/evidence/<id>/` in one final commit, after the closeout review has
+# read them. Nothing reads them after that. `false` keeps them on the branch.
+# sweepRunArtefacts: true
+
+agent:
+  timeoutMs: 5400000
+  runtime: herdr
+  # model: claude-opus-5-5
+  # reasoningEffort: medium
+  # Retries AFTER the first builder attempt; 1 is the default and the behaviour
+  # every epic has always had. Attempt 2 and later carry the prior attempts'
+  # failure evidence — the first failing check and the paths it touched — into
+  # the prompt, so raising this buys a grounded retry rather than the same
+  # prompt again. An attempt that never reached the API grounds nothing.
+  # maxBuilderRetries: 1
+
+# Skills each role gets. `always` is a rule the agent must apply; `offer` is a
+# choice it applies only when the task needs it. `notes` is prose for a stack
+# with no skill at all. Propose this block with `afk stack detect`; safe to
+# hand-edit afterwards.
+#
+# This repo is scripts-only, so it gets the baseline and nothing else.
+roles:
+  # No role pins a model or effort here: every role takes its default from
+  # scripts/roles.mjs (claude-opus-5-5 at medium, reflector on claude-sonnet-5
+  # at high). To move one, set `model` / `reasoningEffort` under that role.
+
+  # --- architect: plans, before any code --------------------------------------
+  # plan-reviewer:
+  #   always: []
+  #   offer:  []
+
+  # --- builders: write code ---------------------------------------------------
+  implementer:
+    always: [coduo-implement, karpathy-guidelines]
+    # offer: []
+    # notes: ""
+  integrator:
+    offer: [resolving-merge-conflicts]
+
+  # --- reviewers: gate the epic -----------------------------------------------
+  verifier:
+    offer: [diagnosing-bugs]

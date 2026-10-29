@@ -1,0 +1,213 @@
+{
+  "laneCap": 6,
+  "at": "2026-10-19T19:12:00.000Z",
+  "mode": "night",
+  "cosRun": { "id": "20261019-213000-night", "mode": "night", "startedAt": "2026-10-19T16:00:00.000Z", "closed": false },
+  "runs": [
+    {
+      "id": "riverbend#301",
+      "project": "riverbend",
+      "epic": "301",
+      "branch": "feat/301-share-sheet-v2",
+      "status": "running",
+      "progress": { "total": 7, "passed": 3 },
+      "counts": { "done": 3, "active": 2, "review": 0, "gate": 0, "failed": 0, "stale": 0, "waiting": 2 },
+      "gates": [],
+      "pr": null,
+      "deploy": null,
+      "fatal": null,
+      "closedAt": null,
+      "activity": "building 304 and 306",
+      "tasks": [
+        { "id": "302", "title": "Share sheet data model", "status": "passed", "after": [] },
+        { "id": "303", "title": "Recipient picker", "status": "passed", "after": [] },
+        { "id": "305", "title": "Link previews", "status": "passed", "after": ["302"] },
+        { "id": "304", "title": "Send flow e2e", "status": "building", "after": ["302", "303"] },
+        { "id": "306", "title": "Offline queue", "status": "building", "after": ["305"] },
+        { "id": "307", "title": "Share analytics", "status": "waiting", "after": ["304"] },
+        { "id": "308", "title": "Docs and changelog", "status": "waiting", "after": ["306", "307"] }
+      ],
+      "planned": [
+        { "kind": "baseline", "label": "baseline", "start": "2026-10-19T16:05:00.000Z", "end": "2026-10-19T16:15:00.000Z" },
+        { "kind": "build", "label": "7 tasks", "start": "2026-10-19T16:15:00.000Z", "end": "2026-10-19T19:30:00.000Z" },
+        { "kind": "closeout", "label": "closeout", "start": "2026-10-19T19:30:00.000Z", "end": "2026-10-19T19:55:00.000Z" }
+      ],
+      "timeline": [
+        { "kind": "baseline", "label": "baseline", "start": "2026-10-19T16:05:00.000Z", "end": "2026-10-19T16:14:00.000Z", "open": false },
+        { "kind": "build", "label": "302", "start": "2026-10-19T16:14:00.000Z", "end": "2026-10-19T16:58:00.000Z", "open": false },
+        { "kind": "build", "label": "303", "start": "2026-10-19T16:15:00.000Z", "end": "2026-10-19T17:20:00.000Z", "open": false },
+        { "kind": "build", "label": "305", "start": "2026-10-19T16:58:00.000Z", "end": "2026-10-19T17:45:00.000Z", "open": false },
+        { "kind": "build", "label": "304", "start": "2026-10-19T17:20:00.000Z", "end": "2026-10-19T19:12:00.000Z", "open": true },
+        { "kind": "build", "label": "306", "start": "2026-10-19T17:45:00.000Z", "end": "2026-10-19T19:12:00.000Z", "open": true }
+      ],
+      "spend": [
+        { "at": "2026-10-19T16:00:00.000Z", "usd": 0 },
+        { "at": "2026-10-19T16:30:00.000Z", "usd": 4.1 },
+        { "at": "2026-10-19T17:00:00.000Z", "usd": 9.8 },
+        { "at": "2026-10-19T17:30:00.000Z", "usd": 15.2 },
+        { "at": "2026-10-19T18:00:00.000Z", "usd": 21.9 },
+        { "at": "2026-10-19T18:30:00.000Z", "usd": 27.4 },
+        { "at": "2026-10-19T19:00:00.000Z", "usd": 33.0 },
+        { "at": "2026-10-19T19:12:00.000Z", "usd": 34.6 }
+      ]
+    },
+    {
+      "id": "atlas#1290",
+      "project": "atlas",
+      "epic": "1290",
+      "branch": "feat/1290-board-cache",
+      "status": "running",
+      "progress": { "total": 5, "passed": 4 },
+      "counts": { "done": 4, "active": 1, "review": 0, "gate": 0, "failed": 0, "stale": 0, "waiting": 0 },
+      "gates": [],
+      "pr": { "number": 1301, "state": "OPEN", "url": "https://github.com/developer/atlas/pull/1301" },
+      "deploy": "pending",
+      "fatal": null,
+      "closedAt": null,
+      "activity": "integrating 1294",
+      "tasks": [
+        { "id": "1291", "title": "Cache schema", "status": "passed", "after": [] },
+        { "id": "1292", "title": "Fetch layer", "status": "passed", "after": [] },
+        { "id": "1293", "title": "Board diffing", "status": "passed", "after": ["1291"] },
+        { "id": "1295", "title": "Cache eviction", "status": "passed", "after": ["1292"] },
+        { "id": "1294", "title": "Wire cache into board view", "status": "integrating", "after": ["1293", "1295"] }
+      ],
+      "planned": [
+        { "kind": "baseline", "label": "baseline", "start": "2026-10-19T16:40:00.000Z", "end": "2026-10-19T16:55:00.000Z" },
+        { "kind": "build", "label": "5 tasks", "start": "2026-10-19T16:55:00.000Z", "end": "2026-10-19T18:40:00.000Z" },
+        { "kind": "closeout", "label": "closeout", "start": "2026-10-19T18:40:00.000Z", "end": "2026-10-19T19:05:00.000Z" }
+      ],
+      "timeline": [
+        { "kind": "baseline", "label": "baseline", "start": "2026-10-19T16:40:00.000Z", "end": "2026-10-19T16:52:00.000Z", "open": false },
+        { "kind": "build", "label": "1291", "start": "2026-10-19T16:52:00.000Z", "end": "2026-10-19T17:30:00.000Z", "open": false },
+        { "kind": "build", "label": "1292", "start": "2026-10-19T16:53:00.000Z", "end": "2026-10-19T17:50:00.000Z", "open": false },
+        { "kind": "build", "label": "1293", "start": "2026-10-19T17:30:00.000Z", "end": "2026-10-19T18:15:00.000Z", "open": false },
+        { "kind": "build", "label": "1295", "start": "2026-10-19T17:50:00.000Z", "end": "2026-10-19T18:30:00.000Z", "open": false },
+        { "kind": "build", "label": "1294", "start": "2026-10-19T18:15:00.000Z", "end": "2026-10-19T19:12:00.000Z", "open": true }
+      ],
+      "spend": [
+        { "at": "2026-10-19T16:30:00.000Z", "usd": 0 },
+        { "at": "2026-10-19T17:00:00.000Z", "usd": 3.2 },
+        { "at": "2026-10-19T17:30:00.000Z", "usd": 8.9 },
+        { "at": "2026-10-19T18:00:00.000Z", "usd": 14.6 },
+        { "at": "2026-10-19T18:30:00.000Z", "usd": 19.8 },
+        { "at": "2026-10-19T19:00:00.000Z", "usd": 22.1 },
+        { "at": "2026-10-19T19:12:00.000Z", "usd": 23.0 }
+      ]
+    },
+    {
+      "id": "afk-claude#273",
+      "project": "afk-claude",
+      "epic": "273",
+      "branch": "feat/273-hub-artifact-replies",
+      "status": "waits for you",
+      "progress": { "total": 2, "passed": 1 },
+      "counts": { "done": 1, "active": 0, "review": 0, "gate": 1, "failed": 0, "stale": 0, "waiting": 0 },
+      "gates": ["275"],
+      "pr": null,
+      "deploy": null,
+      "fatal": null,
+      "closedAt": null,
+      "activity": "parked at gate 275",
+      "tasks": [
+        { "id": "274", "title": "Hub artifact page and snapshot", "status": "passed", "after": [] },
+        { "id": "275", "title": "Route owner threads to Orchestrators", "status": "gate", "after": ["274"] }
+      ],
+      "planned": [
+        { "kind": "baseline", "label": "baseline", "start": "2026-10-19T16:10:00.000Z", "end": "2026-10-19T16:20:00.000Z" },
+        { "kind": "build", "label": "2 tasks", "start": "2026-10-19T16:20:00.000Z", "end": "2026-10-19T18:10:00.000Z" },
+        { "kind": "gate-human", "label": "gate 275", "start": "2026-10-19T18:10:00.000Z", "end": "2026-10-19T18:40:00.000Z" },
+        { "kind": "closeout", "label": "closeout", "start": "2026-10-19T18:40:00.000Z", "end": "2026-10-19T19:00:00.000Z" }
+      ],
+      "timeline": [
+        { "kind": "baseline", "label": "baseline", "start": "2026-10-19T16:10:00.000Z", "end": "2026-10-19T16:20:00.000Z", "open": false },
+        { "kind": "build", "label": "274", "start": "2026-10-19T16:20:00.000Z", "end": "2026-10-19T17:35:00.000Z", "open": false },
+        { "kind": "build", "label": "275", "start": "2026-10-19T17:35:00.000Z", "end": "2026-10-19T18:22:00.000Z", "open": false },
+        { "kind": "gate-human", "label": "275", "start": "2026-10-19T18:22:00.000Z", "end": "2026-10-19T19:12:00.000Z", "open": true }
+      ],
+      "spend": [
+        { "at": "2026-10-19T16:00:00.000Z", "usd": 0 },
+        { "at": "2026-10-19T16:30:00.000Z", "usd": 2.6 },
+        { "at": "2026-10-19T17:00:00.000Z", "usd": 6.9 },
+        { "at": "2026-10-19T17:30:00.000Z", "usd": 11.3 },
+        { "at": "2026-10-19T18:00:00.000Z", "usd": 15.0 },
+        { "at": "2026-10-19T18:30:00.000Z", "usd": 16.4 },
+        { "at": "2026-10-19T19:12:00.000Z", "usd": 16.4 }
+      ]
+    }
+  ],
+  "gates": [
+    { "project": "afk-claude", "epic": "273", "task": "275" }
+  ],
+  "asks": [
+    {
+      "id": "flaky-304",
+      "title": "Task 304's send-flow e2e test fails about 1 run in 3 on CI. Quarantine it, or hold the merge?",
+      "why": "Builder 304 passed locally twice; CI failed twice on a timing assertion in the share sheet animation. Tasks 307 and 308 wait on 304.",
+      "options": [
+        { "value": "quarantine", "label": "Quarantine the test, merge 304", "detail": "Files a ticket to fix the flake; 307 and 308 unblock now." },
+        { "value": "hold", "label": "Hold 304 until the flake is fixed", "detail": "307 and 308 stay blocked; about 2 hours later." },
+        { "value": "retry", "label": "Retry on CI up to 3 times", "detail": "Merges sooner but hides the flake." }
+      ],
+      "rec": "quarantine",
+      "from": "orch-301",
+      "ts": "2026-10-19T18:58:00.000Z"
+    },
+    {
+      "id": "migrate-1294",
+      "title": "Integrating 1294 needs a migration of the board cache table. Run it in this epic, or split it into its own ticket?",
+      "why": "The migration adds one column and backfills about 40k rows. It is reversible. Splitting it leaves 1294 parked tonight.",
+      "options": [
+        { "value": "run-here", "label": "Run it in this epic", "detail": "1294 integrates tonight; the PR carries the migration." },
+        { "value": "split", "label": "Split it into a new ticket", "detail": "1294 parks; the epic closes without it." }
+      ],
+      "rec": "run-here",
+      "from": "orch-1290",
+      "ts": "2026-10-19T19:04:00.000Z"
+    }
+  ],
+  "nightLog": [
+    { "ts": "2026-10-19T19:04:00.000Z", "kind": "note", "text": "orch-1290 asked about the board cache migration; left for Owner (schema change)." },
+    { "ts": "2026-10-19T18:58:00.000Z", "kind": "note", "text": "orch-301 asked about the flaky e2e in 304; left for Owner." },
+    { "ts": "2026-10-19T18:22:00.000Z", "kind": "note", "text": "afk-claude #273 parked at gate 275; its runner exited. Gate card posted." },
+    { "ts": "2026-10-19T17:50:00.000Z", "kind": "decision", "text": "Let atlas #1290 run 2 builders at once; machine load is low." },
+    { "ts": "2026-10-19T16:40:00.000Z", "kind": "note", "text": "Launched atlas #1290 after riverbend's baseline cleared, so the gates did not overlap." },
+    { "ts": "2026-10-19T16:10:00.000Z", "kind": "note", "text": "Launched afk-claude #273." },
+    { "ts": "2026-10-19T16:05:00.000Z", "kind": "note", "text": "Launched riverbend #301." },
+    { "ts": "2026-10-19T16:00:00.000Z", "kind": "grant", "text": "Owner: run all three tonight, merges stay mine." }
+  ],
+  "usage": {
+    "window": { "from": "2026-10-01T00:00:00.000Z", "to": "2026-10-19T19:12:00.000Z" },
+    "budgetUsd": 400,
+    "spentUsd": 212.4,
+    "remainingUsd": 187.6,
+    "budgetShare": 0.531,
+    "total": { "key": "total", "costUsd": 212.4, "messages": 18420, "unpriced": 0, "live": 5, "input": 1820000, "output": 960000, "cacheRead": 412000000, "cacheWrite5m": 8800000, "cacheWrite1h": 2100000 },
+    "byProject": [
+      { "key": "riverbend", "costUsd": 88.2, "messages": 7710, "unpriced": 0, "live": 2 },
+      { "key": "atlas", "costUsd": 64.9, "messages": 5320, "unpriced": 0, "live": 1 },
+      { "key": "afk-claude", "costUsd": 41.7, "messages": 3880, "unpriced": 0, "live": 1 },
+      { "key": "harbour", "costUsd": 17.6, "messages": 1510, "unpriced": 0, "live": 0 }
+    ],
+    "byRole": [
+      { "key": "builder", "costUsd": 121.5, "messages": 10900, "unpriced": 0, "live": 3 },
+      { "key": "orchestrator", "costUsd": 38.2, "messages": 3150, "unpriced": 0, "live": 3 },
+      { "key": "reviewer", "costUsd": 31.0, "messages": 2610, "unpriced": 0, "live": 0 },
+      { "key": "chief-of-staff", "costUsd": 21.7, "messages": 1760, "unpriced": 0, "live": 1 }
+    ]
+  },
+  "lanes": {
+    "window": { "days": 7 },
+    "days": 7,
+    "total": { "key": "total", "lanes": 41, "edited": 33, "peakShare": 0.58, "turns": 2140, "toolCalls": 6120, "contextBeforeEdit": 0.21, "costUsd": 96.3, "live": 5 },
+    "byProject": [
+      { "key": "riverbend", "lanes": 17, "edited": 14, "peakShare": 0.61, "turns": 880, "toolCalls": 2510, "contextBeforeEdit": 0.2, "costUsd": 41.0 },
+      { "key": "atlas", "lanes": 13, "edited": 11, "peakShare": 0.55, "turns": 690, "toolCalls": 1990, "contextBeforeEdit": 0.22, "costUsd": 30.8 },
+      { "key": "afk-claude", "lanes": 11, "edited": 8, "peakShare": 0.57, "turns": 570, "toolCalls": 1620, "contextBeforeEdit": 0.23, "costUsd": 24.5 }
+    ],
+    "byRole": [
+      { "key": "builder", "lanes": 29, "edited": 29, "peakShare": 0.62, "turns": 1610, "toolCalls": 4800, "contextBeforeEdit": 0.19, "costUsd": 70.1 },
+      { "key": "reviewer", "lanes": 12, "edited": 4, "peakShare": 0.44, "turns": 530, "toolCalls": 1320, "contextBeforeEdit": 0.31, "costUsd": 26.2 }
+    ]
+  }
+}

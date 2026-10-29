@@ -1,0 +1,110 @@
+# Which skills each role gets, per enabled plugin. Read by `afk stack detect`;
+# never read at run time. The runner ships this; a project does not edit it —
+# it edits the `roles:` block that `detect` proposes.
+#
+# A plugin appears here only when its skills are known to be installed under
+# that exact name. A named skill that does not exist fails silently as "no such
+# skill", so guessing costs more than omitting: `detect` REPORTS every enabled
+# plugin it has no entry for rather than passing over it.
+#
+# `notes` is prose for a stack that has no skill at all, and it is how most of
+# these entries earn their place. It is a list of lines only because the config
+# parser has no block scalar; the lines are joined with a space on read.
+
+# Applies to every project, whatever it is built with.
+_baseline:
+  implementer:
+    always: [coduo-implement, karpathy-guidelines]
+  integrator:
+    offer: [resolving-merge-conflicts]
+  verifier:
+    offer: [diagnosing-bugs]
+  fixer:
+    always: [karpathy-guidelines]
+    offer: [diagnosing-bugs]
+  reflector:
+    # No skills. `/reflect` and `/debrief` write to the operator's own memory and
+    # knowledge base, which is not this run's to edit — the reflection is a
+    # document in the runner's repo and nothing else.
+    notes:
+      - Write the reflection and nothing else. Do not update memory files, CLAUDE.md,
+      - or any knowledge base; the operator reads the document and decides what to keep.
+
+superwall:
+  # Paywalls and web2app flows. `superwall-integrate` is the SDK wiring and
+  # `superwall-placements` the naming rules a lane gets wrong silently — a
+  # renamed placement stops a campaign firing with nothing in any log.
+  # `superwall-editor` is deliberately absent: it attaches to a live browser
+  # editor session with a pairing code, which an unattended lane has no way to
+  # obtain.
+  implementer:
+    offer: [superwall:superwall-integrate, superwall:superwall-placements]
+  verifier:
+    offer: [superwall:superwall-review]
+
+vercel:
+  implementer:
+    offer: [vercel:nextjs, vercel:shadcn, vercel:vercel-functions]
+  verifier:
+    offer: [vercel:react-best-practices]
+
+react-doctor:
+  # React health scanner (millionco/react-doctor), catalogued React-only. Offered
+  # to the verifier as a diff-scoped health scan, not forced on every lane.
+  verifier:
+    offer: [react-doctor:react-doctor]
+
+pstack:
+  # Curated engineering-discipline skills adopted from cursor/plugins pstack,
+  # hosted in coduo-agents so the local copies stay model-invocable (upstream
+  # ships most slash-only). All `offer`, never `always`: each applies only when
+  # the task calls for it. typescript-best-practices self-gates to .ts/.tsx, so
+  # it is inert on a non-TS repo even when pstack is enabled.
+  implementer:
+    offer: [pstack:typescript-best-practices, pstack:principle-make-operations-idempotent]
+  integrator:
+    offer: [pstack:blast-radius, pstack:principle-prove-it-works]
+  verifier:
+    offer: [pstack:blast-radius, pstack:principle-prove-it-works, pstack:show-me-your-work]
+  plan-reviewer:
+    # A pre-run scoping rule, not a lane-runtime one: it belongs where the graph
+    # is reviewed, not where a lane writes.
+    offer: [pstack:principle-separate-before-serializing-shared-state]
+
+expo:
+  implementer:
+    notes:
+      - This project is an Expo React Native app. Run it with the Expo CLI, not with
+      - a bare React Native command. Native code lives in a generated prebuild
+      - directory, so change the config plugin rather than the generated file.
+
+supabase:
+  implementer:
+    notes:
+      - This project uses Supabase. Write every schema change as a migration file
+      - under supabase/migrations/. Do not change the database from the dashboard.
+
+firebase:
+  implementer:
+    notes:
+      - This project uses Firebase. Security rules are code, so a change to a
+      - collection's shape needs the matching rules change in the same task.
+
+stripe:
+  implementer:
+    notes:
+      - This project uses Stripe. Treat every webhook handler as idempotent, and
+      - verify the signature before reading the body.
+
+posthog:
+  implementer:
+    notes:
+      - This project uses PostHog for product analytics and error tracking. Keep
+      - event names in the existing convention; a renamed event breaks a chart
+      - silently.
+
+cloudflare:
+  implementer:
+    notes:
+      - This project uses Cloudflare R2 or Stream. Bucket and stream credentials
+      - are environment variables; never inline one.

@@ -1,0 +1,103 @@
+fix(654): close the epic's three pending closeout items
+
+locales/en.json
+src/features/filters/menu-navigation.test.ts
+src/features/settings/drawer/FieldAccordionRow.tsx
+src/features/settings/drawer/ProjectSettingsDrawer.test.tsx
+src/features/shared/components/row-actions.test.ts
+afk: update task status (661 passed)
+
+docs/progress.md
+Merge task 661: Switch rows, dot and count, concept icons, and chips that read as labels
+task 661: Switch rows, dot and count, concept icons, and chips that read as labels
+
+src/components/ui/dropdown-menu.tsx
+src/domain/filter.test.ts
+src/domain/filter.ts
+src/features/filters/components/ConceptIcon.tsx
+src/features/filters/components/FilterBar.test.tsx
+src/features/filters/components/FilterBar.tsx
+src/features/filters/components/FilterChip.test.tsx
+src/features/filters/components/FilterChip.tsx
+src/features/filters/components/FilterMenuGroups.test.tsx
+src/features/filters/components/FilterMenuPicker.tsx
+src/features/filters/components/FilterScopeSection.tsx
+src/features/filters/components/FilterValuePane.tsx
+afk: update task status (659 passed)
+
+docs/progress.md
+Merge task 659: Concept icons in the command registry, palette and row actions
+afk: update task status (660 passed)
+
+docs/progress.md
+Merge task 660: Concept icons in project settings, the detail rail and the rows
+afk: update task status (658 passed)
+
+docs/progress.md
+Merge task 658: Display panel re-skin: pills, no badges, no explainer, no search
+afk: update task status (657 passed)
+
+docs/progress.md
+task 660: Concept icons in project settings, the detail rail and the rows
+
+src/features/agents/components/chat/agent-plan-overlay.tsx
+src/features/agents/components/message/plan-card.tsx
+src/features/board/BoardView.tsx
+src/features/detail/components/NativeRailEditor.tsx
+src/features/settings/ProjectFieldSettingsScreen.tsx
+src/features/settings/drawer/FieldAccordionRow.tsx
+src/features/settings/drawer/ProjectSettingsDrawer.test.tsx
+src/features/shared/components/FieldGlyph.tsx
+src/features/shared/components/IssueStateIcon.tsx
+task 658: Display panel re-skin: pills, no badges, no explainer, no search
+
+src/features/filters/components/DisplayControl.test.tsx
+src/features/filters/components/DisplayControl.tsx
+src/features/filters/components/DisplaySettings.test.tsx
+src/features/filters/components/DisplaySettings.tsx
+task 659: Concept icons in the command registry, palette and row actions
+
+src/components/command-palette/CommandPalette.tsx
+src/features/shared/components/row-actions.test.ts
+src/features/shared/components/row-actions.ts
+src/features/shell/issue-action-presentation.test.ts
+src/features/shell/issue-action-presentation.ts
+src/lib/commands/product-commands.test.ts
+src/lib/commands/product-commands.ts
+Merge task 657: The filter menu lists a fixed set, and Include replaces More
+task 657: The filter menu lists a fixed set, and Include replaces More
+
+locales/en.json
+src/domain/filter-menu-groups.test.ts
+src/domain/filter-menu.test.ts
+src/domain/filter-menu.ts
+src/domain/filter-scope.test.ts
+src/domain/filter-scope.ts
+src/features/filters/components/FilterBar.test.tsx
+src/features/filters/components/FilterBar.tsx
+src/features/filters/components/FilterMenuGroups.test.tsx
+src/features/filters/components/FilterMenuPicker.tsx
+src/features/filters/components/FilterScope.test.tsx
+src/features/filters/components/FilterScopeSection.tsx
+src/features/filters/menu-navigation.test.ts
+src/features/filters/more-fields.test.ts
+src/features/filters/more-fields.ts
+afk: update task status (655 passed)
+
+docs/progress.md
+Merge task 655: One concept icon map, for every surface that names a field
+afk: update task status (656 passed)
+
+docs/progress.md
+task 655: One concept icon map, for every surface that names a field
+
+src/domain/concept-icons.test.ts
+src/domain/concept-icons.ts
+Merge task 656: The view switcher is one segmented control, and the sort trigger shows when it is open
+task 656: The view switcher is one segmented control, and the sort trigger shows when it is open
+
+src/components/ui/toggle-group.tsx
+src/features/filters/components/FilterToolbarCluster.test.tsx
+src/features/filters/components/FilterToolbarCluster.tsx
+src/features/filters/components/SortControl.test.tsx
+src/features/filters/components/SortControl.tsx

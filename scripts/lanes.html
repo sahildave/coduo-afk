@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AFK lanes</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f6f4; --card: #ffffff; --ink: #1b1b1a; --muted: #6b6b66; --line: #e4e4df;
+        --track: #ecece7; --bar: #3a6ea5; --alt: #b4562e; --ok: #2f8a4c; --live: #2f8a4c; --warn: #9a6200; --rec: #eef3f9;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #161615; --card: #1f1f1e; --ink: #ededea; --muted: #9a9a94; --line: #33332f;
+          --track: #2c2c29; --bar: #6fa0d6; --alt: #e48a5c; --ok: #5fbf7c; --live: #5fbf7c; --warn: #e0a84a; --rec: #1d2733;
+        }
+      }
+      * { box-sizing: border-box; }
+      body { font: 14px/1.45 -apple-system, system-ui, sans-serif; margin: 0; background: var(--bg); color: var(--ink); }
+      main { max-width: 1180px; margin: 0 auto; padding: 20px 24px 48px; }
+      a { color: var(--bar); }
+      .num { font-variant-numeric: tabular-nums; }
+      .muted { color: var(--muted); }
+      header { display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap; margin-bottom: 16px; }
+      /* inside a hub tab (?embed=1) the hub's own tabs do the navigating */
+      body[data-embed] header > a { display: none; }
+      header h1 { font-size: 20px; margin: 0; flex: 1; }
+      .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+      .seg button { font: inherit; border: 0; background: none; color: var(--ink); padding: 6px 12px; cursor: pointer; }
+      .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+      select, input[type="date"] { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 5px 8px; }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+      h2 { font-size: 15px; margin: 0 0 12px; }
+      h2 .muted { font-weight: 400; font-size: 13px; }
+      .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 18px 24px; }
+      .stat .v { font-size: 30px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; }
+      .stat .v small { font-size: 15px; font-weight: 500; color: var(--muted); letter-spacing: 0; }
+      .stat .l { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+      .stat .s { font-size: 12px; color: var(--muted); }
+      .lede { font-size: 15px; margin: 0 0 16px; max-width: 75ch; }
+      .note { font-size: 12.5px; color: var(--muted); margin: 8px 0 0; max-width: 80ch; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-bottom: 16px; }
+      .grid .card { margin: 0; }
+      .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px 28px; }
+      .charts h3 { font-size: 13px; margin: 0 0 4px; font-weight: 600; }
+      .charts h3 i { display: inline-block; width: 10px; height: 3px; vertical-align: middle; margin-inline-end: 6px; border-radius: 2px; }
+      svg.chart { width: 100%; height: 150px; display: block; overflow: visible; }
+      svg.chart text { font-size: 10.5px; fill: var(--muted); }
+      svg.chart .grid-line { stroke: var(--line); }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 7px 7px; text-align: start; border-bottom: 1px solid var(--line); white-space: nowrap; }
+      th { font-size: 12px; font-weight: 600; color: var(--muted); white-space: normal; vertical-align: bottom; line-height: 1.25; }
+      th button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+      th button[aria-sort]::after { content: " ↓"; }
+      th button[aria-sort="ascending"]::after { content: " ↑"; }
+      td.r, th.r { text-align: end; }
+      td.wrap { white-space: normal; min-width: 9em; }
+      td.clip { max-width: 170px; overflow: hidden; text-overflow: ellipsis; }
+      td.cost, th.cost { color: var(--muted); font-size: 12.5px; }
+      tbody.lanes tr.row { cursor: pointer; }
+      tbody.lanes tr.row:hover { background: var(--rec); }
+      tr.open td { border-bottom: 0; }
+      tr.detail td { white-space: normal; background: var(--rec); font-size: 13px; }
+      .ctx { display: inline-flex; align-items: center; gap: 6px; justify-content: flex-end; }
+      .ctx .track { width: 44px; height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
+      .ctx .track > div { height: 100%; background: var(--bar); }
+      .split { font-size: 12px; color: var(--muted); }
+      .role { font-size: 12px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); }
+      .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--live); margin-inline-end: 6px; animation: pulse 2s infinite; }
+      @keyframes pulse { 50% { opacity: 0.35; } }
+      @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+      .scroll { overflow-x: auto; }
+      .err { color: var(--alt); }
+      .controls { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: end; margin-bottom: 12px; }
+      .controls label { display: grid; gap: 3px; font-size: 12px; color: var(--muted); }
+      .more { font: inherit; font-size: 13px; background: none; border: 0; color: var(--bar); cursor: pointer; padding: 8px 0 0; }
+      :focus-visible { outline: 2px solid var(--bar); outline-offset: 2px; border-radius: 4px; }
+      @media (max-width: 1100px) { .opt2 { display: none; } }
+      @media (max-width: 860px) { .opt { display: none; } }
+      @media (max-width: 560px) {
+        main { padding: 14px 12px 40px; }
+        .card { padding: 14px; }
+        .stat .v { font-size: 24px; }
+        .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .grid, .charts { grid-template-columns: minmax(0, 1fr); }
+        th, td { padding: 6px 5px; }
+        .narrow-hide, .ctx .track { display: none; }
+        td.clip { max-width: 100px; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <a href="/">← Dashboard</a>
+        <h1>AFK lanes</h1>
+        <div class="seg" role="group" aria-label="Window">
+          <button data-days="7" aria-pressed="false">7 days</button>
+          <button data-days="30" aria-pressed="true">30 days</button>
+          <button data-days="90" aria-pressed="false">90 days</button>
+        </div>
+        <select id="project" aria-label="Project"><option value="">All projects</option></select>
+        <a href="/usage.html">Spending →</a>
+      </header>
+
+      <section class="card" id="head"><p class="muted">Reading lane transcripts…</p></section>
+      <section class="card" id="live" hidden></section>
+      <section class="card" id="trend"></section>
+      <section class="card" id="compare">
+        <h2>Before and after a change <span class="muted">atlas-workspace lanes that edited, as the code-map routine counts them</span></h2>
+        <div class="controls">
+          <label>Baseline from<input type="date" id="c-from" value="2026-08-25" /></label>
+          <label>Baseline to<input type="date" id="c-to" value="2026-10-03" /></label>
+          <label>Since<input type="date" id="c-since" value="2026-10-05" /></label>
+        </div>
+        <div id="compare-body" class="scroll"><p class="muted">Loading…</p></div>
+      </section>
+      <div class="grid" id="groups"></div>
+      <section class="card" id="lanes"></section>
+      <p class="muted" id="foot"></p>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+      const k = (n) => (n == null ? "–" : n >= 1e6 ? (n / 1e6).toFixed(2) + "M" : (n / 1e3).toFixed(1) + "k");
+      const pct = (x) => (x == null ? "–" : Math.round(x * 100) + "%");
+      const n0 = (x) => (x == null ? "–" : Math.round(x).toLocaleString("en-US"));
+      const usd = (x) => (x == null ? "–" : "$" + x.toFixed(2));
+      const dur = (a, b) => {
+        const ms = Date.parse(b) - Date.parse(a);
+        if (!Number.isFinite(ms)) return "–";
+        const m = Math.round(ms / 60000);
+        return m < 60 ? m + "m" : Math.floor(m / 60) + "h " + (m % 60) + "m";
+      };
+      const shortModel = (m) => String(m).replace(/^claude-/, "").replace(/-\d{8}$/, "");
+      const topTools = (t, n = 3) => Object.entries(t).sort((a, b) => b[1] - a[1]).slice(0, n).map(([name, c]) => `${esc(name)} ${c}`).join(", ");
+
+      let days = 30, project = "", data = null, limit = 50;
+      let sort = { key: "peak", dir: -1 };
+      const open = new Set();
+
+      const stat = (v, label, sub = "") => `<div class="stat"><div class="v num">${v}</div><div class="l">${label}</div>${sub ? `<div class="s num">${sub}</div>` : ""}</div>`;
+
+      const head = (r) => {
+        const h = r.headline;
+        if (!h.lanes) { $("head").innerHTML = `<p class="muted">No lanes in the last ${r.window.days} days${project ? " for " + esc(project) : ""}.</p>`; return; }
+        $("head").innerHTML = `<p class="lede">Over the last ${r.window.days} days, <b class="num">${n0(h.lanes)}</b> lanes ran${project ? " in " + esc(project) : ""}; <b class="num">${n0(h.edited)}</b> of them edited code. The typical editing lane added <b class="num">${k(h.contextBeforeEdit)}</b> of context and made <b class="num">${n0(h.callsBeforeEdit)}</b> tool calls before its first edit.</p>
+          <div class="stats">
+            ${stat(k(h.contextBeforeEdit), "context added before first edit", "median, lanes that edited")}
+            ${stat(`${n0(h.callsBeforeEdit)} <small>calls</small>`, "tool calls before first edit", `explore ${n0(h.exploreBeforeEdit)} · graphify ${n0(h.graphifyBeforeEdit)} · other ${n0(h.otherBeforeEdit)}`)}
+            ${stat(`${n0(h.turns)} <small>turns</small>`, "turns per lane", `${n0(h.toolCalls)} tool calls per lane (median)`)}
+            ${stat(pct(h.peakShare), "peak context", `of the ${k(r.contextLimit)} window, median lane`)}
+            ${stat(pct(h.readCodeMapShare), "read the code map", "share of all lanes")}
+          </div>
+          <p class="note">Medians take the upper middle value, as the code-map routine does. “Explore” is Read, Grep, Glob and shell ls/grep/find/cat/sed/head/tail/wc/tree. API cost of these lanes: ${usd(h.costUsd)} (<a href="/usage.html">spending page</a>).</p>`;
+      };
+
+      // One line per series over the daily trend; x is the day index.
+      const chart = (points, value, color) => {
+        const pts = points.filter((p) => value(p) != null);
+        if (pts.length < 2) return `<p class="muted">Not enough days with editing lanes.</p>`;
+        const W = 480, H = 150, L = 38, B = 20;
+        // The y-scale stops at the 95th percentile when one day towers over
+        // the rest (2026-09-09 sat at 191k); days above it pin to the top as
+        // hollow dots and say so in their title.
+        const sorted = pts.map(value).sort((a, b) => a - b);
+        const p95 = sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)];
+        const top = sorted[sorted.length - 1];
+        const max = (top > p95 * 1.5 ? p95 : top) || 1;
+        const at = (v) => Math.min(v, max);
+        const x = (i) => L + (i / (points.length - 1 || 1)) * (W - L - 6);
+        const y = (v) => H - B - (v / max) * (H - B - 8);
+        const idx = new Map(points.map((p, i) => [p.key, i]));
+        const path = pts.map((p, i) => `${i ? "L" : "M"}${x(idx.get(p.key)).toFixed(1)},${y(at(value(p))).toFixed(1)}`).join("");
+        const ticks = [0, 0.5, 1].map((f) => `<line class="grid-line" x1="${L}" x2="${W - 6}" y1="${y(max * f)}" y2="${y(max * f)}"/><text x="${L - 6}" y="${y(max * f) + 3}" text-anchor="end">${value.fmt(max * f)}</text>`).join("");
+        const labels = [points[0], points[Math.floor(points.length / 2)], points[points.length - 1]].map((p) => `<text x="${x(idx.get(p.key))}" y="${H - 4}" text-anchor="middle">${p.key.slice(5)}</text>`).join("");
+        const dots = pts.map((p) => {
+          const clipped = value(p) > max;
+          return `<circle cx="${x(idx.get(p.key))}" cy="${y(at(value(p)))}" r="${clipped ? 3.5 : 2.5}" fill="${clipped ? "var(--card)" : color}" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke"><title>${p.key}: ${value.fmt(value(p))} (${p.edited} editing lanes)${clipped ? ", above the chart's top" : ""}</title></circle>`;
+        }).join("");
+        return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img">${ticks}${labels}<path d="${path}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/>${dots}</svg>`;
+      };
+      const ctxVal = Object.assign((p) => p.contextBeforeEdit, { fmt: k });
+      const expVal = Object.assign((p) => p.exploreBeforeEdit, { fmt: (v) => String(Math.round(v)) });
+      const trend = (r) => {
+        $("trend").innerHTML = `<h2>Per day <span class="muted">median of the lanes that edited, by the day their transcript last changed</span></h2>
+          <div class="charts">
+            <div><h3><i style="background:var(--bar)"></i>Context added before first edit</h3>${chart(r.trend, ctxVal, "var(--bar)")}</div>
+            <div><h3><i style="background:var(--alt)"></i>Explore calls before first edit</h3>${chart(r.trend, expVal, "var(--alt)")}</div>
+          </div>`;
+      };
+
+      const groupTable = (title, rows, label) => `<section class="card"><h2>${title}</h2><div class="scroll"><table class="num">
+        <thead><tr><th>${label}</th><th class="r">lanes · edited</th><th class="r">context before edit</th><th class="r">calls · explore</th><th class="r opt">turns</th><th class="r">peak</th></tr></thead>
+        <tbody>${rows.slice(0, 12).map((g) => `<tr><td class="clip" title="${esc(g.key)}">${esc(g.key)}</td><td class="r">${g.lanes} <span class="split">· ${g.edited}</span></td><td class="r">${k(g.contextBeforeEdit)}</td><td class="r">${g.edited ? `${n0(g.callsBeforeEdit)} <span class="split">· ${n0(g.exploreBeforeEdit)}</span>` : "–"}</td><td class="r opt">${n0(g.turns)}</td><td class="r">${pct(g.peakShare)}</td></tr>`).join("")}</tbody></table></div></section>`;
+
+      const live = (r) => {
+        const el = $("live");
+        el.hidden = !r.live.length;
+        if (!r.live.length) return;
+        el.innerHTML = `<h2><span class="dot"></span>Running now <span class="muted">transcript written in the last 5 minutes</span></h2><div class="scroll"><table class="num"><thead><tr><th>lane</th><th>role</th><th class="r">context</th><th class="r">tool calls</th><th>last tool</th></tr></thead><tbody>
+          ${r.live.map((l) => `<tr><td class="clip">${esc(l.project)} #${esc(l.epicId)}${l.taskId ? ` · ${esc(l.taskId)}-${l.attempt}` : ""}</td><td><span class="role">${esc(l.role)}</span></td><td class="r"><span class="ctx">${k(l.peakContext)} · ${pct(l.peakShare)}<span class="track"><div style="width:${Math.min(100, l.peakShare * 100)}%"></div></span></span></td><td class="r">${l.toolCalls}</td><td>${esc(l.lastTool ?? "–")}</td></tr>`).join("")}
+        </tbody></table></div>`;
+      };
+
+      const COLS = [
+        ["project", "project · epic", (l) => l.project + " " + l.epicId, ""],
+        ["role", "role", (l) => l.role, ""],
+        ["task", "task", (l) => (l.taskId ? Number(l.taskId) * 100 + (l.attempt ?? 0) : -1), "opt"],
+        ["model", "model", (l) => l.model, "opt opt2"],
+        ["peak", "peak context", (l) => l.peakContext, "r"],
+        ["before", "context before edit", (l) => (l.edited ? l.beforeFirstEdit.contextGrowth : -1), "r"],
+        ["calls", "calls before edit", (l) => (l.edited ? l.beforeFirstEdit.toolCalls : -1), "r narrow-hide"],
+        ["turns", "turns", (l) => l.turns, "r opt"],
+        ["tools", "tool calls", (l) => l.toolCalls, "r opt opt2"],
+        ["dur", "duration", (l) => Date.parse(l.lastAt) - Date.parse(l.firstAt), "r opt"],
+        ["cost", "cost", (l) => l.costUsd ?? 0, "r cost opt"],
+      ];
+      const lanes = (r) => {
+        const col = COLS.find((c) => c[0] === sort.key);
+        const rows = [...r.lanes].sort((a, b) => { const x = col[2](a), y = col[2](b); return (x < y ? -1 : x > y ? 1 : 0) * sort.dir; });
+        const ths = COLS.map(([key, label, , cls]) => `<th class="${cls}"><button data-sort="${key}"${sort.key === key ? ` aria-sort="${sort.dir < 0 ? "descending" : "ascending"}"` : ""}>${label}</button></th>`).join("");
+        const body = rows.slice(0, limit).map((l) => {
+          const id = l.lastAt + l.firstAt + l.role + l.taskId;
+          const b = l.beforeFirstEdit;
+          const row = `<tr class="row${open.has(id) ? " open" : ""}" data-id="${esc(id)}" tabindex="0" aria-expanded="${open.has(id)}">
+            <td class="clip" title="${esc(l.project)} #${esc(l.epicId)}">${l.live ? '<span class="dot"></span>' : ""}${esc(l.project)} <span class="split">#${esc(l.epicId)}</span></td><td><span class="role">${esc(l.role)}</span></td>
+            <td class="opt">${l.taskId ? `${esc(l.taskId)}-${l.attempt}` : "–"}</td><td class="opt opt2">${esc(shortModel(l.model))}</td>
+            <td class="r"><span class="ctx">${k(l.peakContext)}<span class="track"><div style="width:${Math.min(100, l.peakShare * 100)}%"></div></span></span></td>
+            <td class="r">${l.edited ? k(b.contextGrowth) : '<span class="muted">no edit</span>'}</td>
+            <td class="r narrow-hide">${l.edited ? `${b.toolCalls} <span class="split">${b.explore}/${b.graphify}/${b.other}</span>` : "–"}</td>
+            <td class="r opt">${l.turns}</td><td class="r opt opt2">${l.toolCalls}</td><td class="r opt">${dur(l.firstAt, l.lastAt)}</td><td class="r cost opt">${usd(l.costUsd)}</td></tr>`;
+          if (!open.has(id)) return row;
+          return row + `<tr class="detail"><td colspan="${COLS.length}">
+            <b>Tools:</b> ${topTools(l.tools, 12) || "none"}<br/>
+            <b>Before first edit:</b> ${l.edited ? `${b.toolCalls} calls (explore ${b.explore}, graphify ${b.graphify}, other ${b.other}), context +${k(b.contextGrowth)}, ${k(b.tokens)} tokens billed` : "never edited"} · code map ${l.readCodeMap ? "read" : "not read"}<br/>
+            <span class="muted">${esc(l.model)} · ${esc(l.firstAt?.slice(0, 16).replace("T", " "))} → ${esc(l.lastAt?.slice(11, 16))} UTC · peak ${pct(l.peakShare)} of the window · last tool ${esc(l.lastTool ?? "–")} · ${usd(l.costUsd)}</span></td></tr>`;
+        }).join("");
+        $("lanes").innerHTML = `<h2>Every lane <span class="muted">${r.lanes.length} lanes · click a column to sort, a row for its tools · calls split explore/graphify/other</span></h2>
+          <div class="scroll"><table class="num"><thead><tr>${ths}</tr></thead><tbody class="lanes">${body}</tbody></table></div>
+          ${rows.length > limit ? `<button class="more" id="more">Show ${Math.min(100, rows.length - limit)} more of ${rows.length - limit}</button>` : ""}`;
+      };
+
+      const render = () => {
+        const r = data;
+        head(r); live(r); trend(r); lanes(r);
+        $("groups").innerHTML = groupTable("By project", r.byProject, "project") + groupTable("By role", r.byRole, "role");
+        const sel = $("project");
+        if (sel.options.length === 1) for (const p of r.projects) sel.add(new Option(p, p));
+        $("foot").textContent = `Window ${r.window.from.slice(0, 10)} to ${r.window.to.slice(0, 10)}. Refreshes every minute.`;
+      };
+
+      const load = async () => {
+        try {
+          const res = await fetch(`/lanes?days=${days}${project ? "&project=" + encodeURIComponent(project) : ""}`);
+          data = await res.json();
+          render();
+        } catch (e) { $("head").innerHTML = `<p class="err">Could not load /lanes: ${esc(e.message)}</p>`; }
+      };
+
+      const cmpRow = (label, g) => `<tr><td class="wrap">${label}</td><td class="r">${g.lanes}</td><td class="r"><b>${k(g.contextBeforeEdit)}</b></td><td class="r">${n0(g.callsBeforeEdit)}</td><td class="r"><b>${n0(g.exploreBeforeEdit)}</b></td><td class="r narrow-hide">${n0(g.graphifyBeforeEdit)}</td><td class="r cost opt">${k(g.billedBeforeEdit)}</td><td class="r cost opt">${k(g.outputTokens)}</td></tr>`;
+      const loadCompare = async () => {
+        const q = `since=${$("c-since").value}&from=${$("c-from").value}&to=${$("c-to").value}`;
+        try {
+          const c = await (await fetch(`/lanes/compare?${q}`)).json();
+          const a = c.after.noMap, b = c.baseline.noMap;
+          const verdict = a.lanes < 30 ? `Not enough lanes since ${esc(c.after.from)} to judge yet (${a.lanes} of 30).`
+            : a.contextBeforeEdit <= b.contextBeforeEdit + 2000 && a.exploreBeforeEdit <= b.exploreBeforeEdit + 2 ? "Since-date lanes are within 2k context and 2 explore calls of the baseline."
+            : "Since-date lanes add more context or explore more than the baseline.";
+          $("compare-body").innerHTML = `<p class="lede">${verdict}</p><table class="num"><thead><tr><th>lanes</th><th class="r">n</th><th class="r">context before edit</th><th class="r">calls</th><th class="r">explore</th><th class="r narrow-hide">graphify</th><th class="r cost opt">billed before edit</th><th class="r cost opt">output</th></tr></thead><tbody>
+            ${cmpRow(`Baseline ${esc(c.baseline.from)}…${esc(c.baseline.to)}, no map`, b)}
+            ${cmpRow(`Since ${esc(c.after.from)}, no map`, a)}
+            ${c.baseline.readMap.lanes ? cmpRow(`Baseline, read map`, c.baseline.readMap) : ""}
+            ${c.after.readMap.lanes ? cmpRow(`Since, read map <span class="err">(something still points lanes at the map)</span>`, c.after.readMap) : ""}
+          </tbody></table><p class="note">Judge on context before edit and explore calls only. Billed tokens shifted for unrelated reasons in the same change.</p>`;
+        } catch (e) { $("compare-body").innerHTML = `<p class="err">Could not load /lanes/compare: ${esc(e.message)}</p>`; }
+      };
+
+      document.querySelector(".seg").addEventListener("click", (e) => {
+        const b = e.target.closest("button"); if (!b) return;
+        days = Number(b.dataset.days);
+        for (const x of document.querySelectorAll(".seg button")) x.setAttribute("aria-pressed", String(x === b));
+        limit = 50; load();
+      });
+      $("project").addEventListener("change", (e) => { project = e.target.value; limit = 50; load(); });
+      for (const id of ["c-from", "c-to", "c-since"]) $(id).addEventListener("change", loadCompare);
+      $("lanes").addEventListener("click", (e) => {
+        const s = e.target.closest("button[data-sort]");
+        if (s) { sort = { key: s.dataset.sort, dir: sort.key === s.dataset.sort ? -sort.dir : -1 }; lanes(data); return; }
+        if (e.target.id === "more") { limit += 100; lanes(data); return; }
+        const tr = e.target.closest("tr.row");
+        if (tr) { open.has(tr.dataset.id) ? open.delete(tr.dataset.id) : open.add(tr.dataset.id); lanes(data); }
+      });
+      $("lanes").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.matches("tr.row")) e.target.click(); });
+      load().then(loadCompare);
+      setInterval(load, 60_000);
+    </script>
+  </body>
+</html>

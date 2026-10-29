@@ -1,0 +1,14 @@
+Reading prompt from stdin...
+2026-09-02T04:42:31.203497Z ERROR codex_models_manager::manager: failed to load models cache: missing field `supports_parallel_tool_calls` at line 97 column 5
+2026-09-02T04:42:32.526284Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:50816/mcp/c166c4178ea744ab8c1313b755c3aaf1/active)")))
+2026-09-02T04:42:32.526288Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:29979/mcp)")))
+{"type":"thread.started","thread_id":"01a0606d-03dc-7ef2-9a1a-4f72afa35d02"}
+2026-09-02T04:42:32.537260Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:50816/mcp/c166c4178ea744ab8c1313b755c3aaf1/active)")))
+2026-09-02T04:42:32.537278Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:29979/mcp)")))
+{"type":"turn.started"}
+2026-09-02T04:42:32.789475Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:50816/mcp/c166c4178ea744ab8c1313b755c3aaf1/active)")))
+2026-09-02T04:42:32.789523Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:29979/mcp)")))
+2026-09-02T04:42:33.791369Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:29979/mcp)")))
+2026-09-02T04:42:33.791388Z ERROR rmcp::transport::worker: worker quit with fatal: Transport channel closed, when Client(HttpRequest(HttpRequest("http/request failed: error sending request for url (http://127.0.0.1:50816/mcp/c166c4178ea744ab8c1313b755c3aaf1/active)")))
+{"type":"error","message":"You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 12:09 PM."}
+{"type":"turn.failed","error":{"message":"You've hit your usage limit. Upgrade to Pro (https://chatgpt.com/explore/pro), visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again at 12:09 PM."}}

@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AFK usage</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f6f6f4; --card: #ffffff; --ink: #1b1b1a; --muted: #6b6b66; --line: #e4e4df;
+        --track: #ecece7; --bar: #3a6ea5; --ok: #2f8a4c; --over: #c2362b; --over-soft: #fbe9e7; --live: #2f8a4c; --warn: #9a6200; --rec: #eef3f9;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #161615; --card: #1f1f1e; --ink: #ededea; --muted: #9a9a94; --line: #33332f;
+          --track: #2c2c29; --bar: #6fa0d6; --ok: #5fbf7c; --over: #ff6b5e; --over-soft: #3a1f1c; --live: #5fbf7c; --warn: #e0a84a; --rec: #1d2733;
+        }
+      }
+      * { box-sizing: border-box; }
+      body { font: 14px/1.45 -apple-system, system-ui, sans-serif; margin: 0; background: var(--bg); color: var(--ink); }
+      main { max-width: 1080px; margin: 0 auto; padding: 20px 24px 48px; }
+      a { color: var(--bar); }
+      .num { font-variant-numeric: tabular-nums; }
+      .muted { color: var(--muted); }
+      header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; }
+      /* inside a hub tab (?embed=1) the hub's own tabs do the navigating */
+      body[data-embed] header > a { display: none; }
+      header h1 { font-size: 20px; margin: 0; flex: 1; }
+      .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+      .seg button { font: inherit; border: 0; background: none; color: var(--ink); padding: 6px 14px; cursor: pointer; }
+      .seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+      h2 { font-size: 15px; margin: 0 0 12px; }
+      h2 .muted { font-weight: 400; font-size: 13px; }
+      .budget.over { border-color: var(--over); background: var(--over-soft); }
+      .big { font-size: 40px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.1; }
+      .budget.over .big, .over-text { color: var(--over); }
+      .budget-line { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
+      .badge { font-weight: 600; font-size: 13px; padding: 2px 8px; border-radius: 999px; background: var(--over); color: #fff; }
+      .meter { position: relative; height: 14px; background: var(--track); border-radius: 7px; margin: 14px 0 6px; overflow: hidden; }
+      .meter > div { position: absolute; inset: 0 auto 0 0; background: var(--ok); }
+      .budget.over .meter > div { background: var(--over); }
+      .meter .mark { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--ink); }
+      .meter-legend { position: relative; height: 18px; font-size: 12px; }
+      .meter-legend span { position: absolute; top: 0; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+      .grid .card { margin: 0; }
+      .bars { list-style: none; margin: 0; padding: 0; }
+      .bars li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 5px 0; }
+      .bars .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .bars .cost { text-align: end; font-weight: 600; }
+      .bars .track { grid-column: 1 / -1; height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
+      .bars .track > div { height: 100%; background: var(--bar); border-radius: 3px; }
+      .bars .share { font-weight: 400; color: var(--muted); font-size: 12px; margin-inline-start: 6px; }
+      .more { font: inherit; font-size: 13px; background: none; border: 0; color: var(--bar); cursor: pointer; padding: 6px 0 0; }
+      table { width: 100%; border-collapse: collapse; }
+      th, td { padding: 7px 8px; text-align: start; border-bottom: 1px solid var(--line); white-space: nowrap; }
+      th { font-size: 12px; font-weight: 600; color: var(--muted); }
+      td.r, th.r { text-align: end; }
+      td.clip { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+      td.costcell { width: 200px; }
+      .inline { display: flex; align-items: center; gap: 8px; }
+      .inline .track { flex: 1; min-width: 60px; order: 1; height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; max-width: 180px; }
+      .inline .track > div { height: 100%; background: var(--bar); }
+      .inline b { min-width: 64px; text-align: end; }
+      th:first-child.r { text-align: start; padding-inline-start: 16px; }
+      .role { font-size: 12px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); }
+      .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--live); margin-inline-end: 6px; animation: pulse 2s infinite; }
+      @keyframes pulse { 50% { opacity: 0.35; } }
+      @media (prefers-reduced-motion: reduce) { .dot { animation: none; } }
+      details { margin-top: 10px; }
+      summary { cursor: pointer; color: var(--muted); font-size: 13px; }
+      .tokens { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
+      .tokens div { font-size: 12px; color: var(--muted); }
+      .tokens b { display: block; font-size: 16px; color: var(--ink); }
+      .scroll { overflow-x: auto; }
+      .err { color: var(--over); }
+      ::selection { background: var(--bar); color: var(--card); }
+      :focus-visible { outline: 2px solid var(--bar); outline-offset: 2px; border-radius: 4px; }
+      .lede { font-size: 15px; margin: 0 0 4px; max-width: 70ch; }
+      .lede b { font-weight: 650; }
+      .note { font-size: 12.5px; color: var(--muted); margin: 6px 0 0; max-width: 75ch; }
+      .fits-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 12px 28px; margin-top: 18px; }
+      h3 { font-size: 13px; margin: 0 0 6px; }
+      h3 .muted { font-weight: 400; }
+      .rows { list-style: none; margin: 0; padding: 0; }
+      .rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 12px; padding: 7px 0; border-bottom: 1px solid var(--line); }
+      .rows li:last-child { border-bottom: 0; }
+      .rows .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .rows .cost { text-align: end; font-weight: 600; }
+      .rows .sub { grid-column: 1 / -1; font-size: 12px; color: var(--muted); }
+      .rows li.total { border-top: 1px solid var(--ink); border-bottom: 0; }
+      .pill { font-size: 11.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; margin-inline-start: 6px; white-space: nowrap; }
+      .pill.fits { color: var(--ok); border: 1px solid currentColor; }
+      .pill.borderline { color: var(--warn); border: 1px solid currentColor; }
+      .pill.does-not-fit { color: var(--over); border: 1px solid currentColor; }
+      .tag { font-size: 11px; color: var(--muted); margin-inline-start: 6px; }
+      .rec { background: var(--rec); border-radius: 10px; padding: 12px 14px; margin-top: 14px; }
+      .rec ol { margin: 6px 0 0; padding-inline-start: 20px; }
+      .compact th, .compact td { padding: 5px 6px; }
+      @media (max-width: 860px) {
+        .lanes-table .opt { display: none; }
+        td.costcell { width: auto; }
+        .inline .track { max-width: 90px; }
+        td.clip { max-width: 140px; }
+      }
+      @media (max-width: 560px) {
+        main { padding: 14px 12px 40px; }
+        .card { padding: 14px; }
+        .big { font-size: 32px; }
+        .grid, .fits-grid { grid-template-columns: minmax(0, 1fr); }
+        .lanes-table thead { display: none; }
+        .lanes-table, .lanes-table tbody { display: block; }
+        .lanes-table tr { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+        .lanes-table td { border: 0; padding: 0; }
+        .lanes-table td.costcell { flex-basis: 100%; }
+        .lanes-table td.r { margin-inline-start: auto; }
+        .lanes-table td.clip { max-width: none; }
+        .compact .opt { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <a href="/">← Dashboard</a>
+        <h1>AFK spending</h1>
+        <a href="/lanes.html">Lane efficiency →</a>
+        <div class="seg" role="group" aria-label="Period">
+          <button id="p-month" aria-pressed="true">This month</button>
+          <button id="p-all" aria-pressed="false">All time</button>
+        </div>
+      </header>
+
+      <section class="card budget" id="budget"><p class="muted">Loading…</p></section>
+      <section class="card" id="fits"></section>
+      <section class="card" id="live"></section>
+      <div class="grid" id="groups"></div>
+      <section class="card" id="lanes" style="margin-top: 16px"></section>
+      <p class="muted" id="foot"></p>
+    </main>
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+      const usd = (n) => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const usd0 = (n) => "$" + Math.round(n).toLocaleString("en-US");
+      const mtok = (n) => (n >= 1e9 ? (n / 1e9).toFixed(2) + "B" : (n / 1e6).toFixed(n < 1e7 ? 2 : 1) + "M");
+      const pct = (x) => Math.round(x * 100).toLocaleString("en-US") + "%";
+      let allTime = false;
+      let last;
+      const expanded = new Set();
+
+      // byLane key: "<project> #<epic> <role> <task>-<attempt>"; parsed from the right so a project name may hold spaces.
+      const parseLane = (key) => {
+        const m = /^(.*) #(\S+) (\S+) (\S+?)-(\d+)$/.exec(key);
+        return m ? { project: m[1], epic: m[2], role: m[3], task: m[4], attempt: m[5] } : { project: key, epic: "", role: "", task: "", attempt: "" };
+      };
+
+      const tokens = (g) => `<details><summary>Token counts</summary><div class="tokens num">
+        <div><b>${mtok(g.input)}</b>input tokens</div><div><b>${mtok(g.output)}</b>output tokens</div>
+        <div><b>${mtok(g.cacheWrite5m + g.cacheWrite1h)}</b>cache writes</div><div><b>${mtok(g.cacheRead)}</b>cache reads</div>
+        <div><b>${g.messages.toLocaleString("en-US")}</b>messages</div></div></details>`;
+      const unpriced = (g) => (g.unpriced ? `<p class="muted">${g.unpriced} messages had no known price and are not counted.</p>` : "");
+
+      const budget = (r) => {
+        const el = $("budget");
+        if (!r.window.from) {
+          el.classList.remove("over");
+          el.innerHTML = `<h2>Spent, all time <span class="muted">at API prices</span></h2>
+            <div class="big num">${usd(r.spentUsd)}</div>
+            <p class="muted">The ${usd0(r.budgetUsd)} budget is monthly. Switch to “This month” to compare against it.</p>${unpriced(r.total)}${tokens(r.total)}`;
+          return;
+        }
+        const over = r.budgetShare > 1;
+        el.classList.toggle("over", over);
+        const scale = Math.max(1, r.budgetShare); // the meter spans whichever is larger, budget or spend
+        const markAt = 100 / scale;
+        el.innerHTML = `<h2>Spent this month <span class="muted">${r.window.from.slice(0, 10)} to ${r.window.to.slice(0, 10)} UTC, at API prices</span></h2>
+          <div class="budget-line"><span class="big num">${usd(r.spentUsd)}</span>
+            <span class="num">of ${usd0(r.budgetUsd)} budget</span>
+            ${over ? `<span class="badge num">${pct(r.budgetShare)} of budget</span><span class="over-text num">${usd(-r.remainingUsd)} over</span>`
+                   : `<span class="num muted">${pct(r.budgetShare)} used, ${usd(r.remainingUsd)} left</span>`}</div>
+          <div class="meter" role="img" aria-label="${pct(r.budgetShare)} of budget used">
+            <div style="width:${(r.budgetShare / scale) * 100}%"></div>
+            ${over ? `<span class="mark" style="left:calc(${markAt}% - 1px)"></span>` : ""}</div>
+          <div class="meter-legend muted num"><span style="left:0">$0</span>
+            ${over ? `<span style="left:${markAt}%;transform:translateX(-50%)">budget ${usd0(r.budgetUsd)}</span><span style="right:0">${usd0(r.spentUsd)}</span>`
+                   : `<span style="right:0">${usd0(r.budgetUsd)}</span>`}</div>
+          ${unpriced(r.total)}${tokens(r.total)}`;
+      };
+
+      const bars = (id, title, groups, total, label = (k) => k) => {
+        const limit = expanded.has(id) ? groups.length : 8;
+        const max = groups[0]?.costUsd || 1;
+        const rows = groups.slice(0, limit).map((g) => `<li title="${esc(g.key)}">
+            <span class="name">${g.live ? '<span class="dot" aria-label="live"></span>' : ""}${esc(label(g.key))}</span>
+            <span class="cost num">${usd(g.costUsd)}<span class="share">${pct(g.costUsd / (total || 1))}</span></span>
+            <span class="track"><div style="width:${(g.costUsd / max) * 100}%"></div></span></li>`).join("");
+        const more = groups.length > 8 ? `<button class="more" data-toggle="${id}">${expanded.has(id) ? "Show top 8" : `Show all ${groups.length}`}</button>` : "";
+        return `<section class="card"><h2>${title}</h2>${groups.length ? `<ul class="bars">${rows}</ul>${more}` : '<p class="muted">Nothing yet.</p>'}</section>`;
+      };
+
+      const laneTable = (groups, max) => `<div class="scroll"><table class="lanes-table"><thead><tr>
+          <th class="r">Cost</th><th>Project</th><th>Epic</th><th>Role</th><th>Task</th><th class="r">Attempt</th><th class="r opt">Output tokens</th><th class="r opt">Cache reads</th></tr></thead><tbody>` +
+        groups.map((g) => {
+          const l = parseLane(g.key);
+          const ref = (v) => (/^\d+$/.test(v) ? "#" + v : esc(v));
+          return `<tr><td class="costcell"><div class="inline num"><span class="track"><div style="width:${(g.costUsd / max) * 100}%"></div></span><b>${usd(g.costUsd)}</b></div></td>
+            <td class="clip" title="${esc(l.project)}">${g.live ? '<span class="dot" aria-label="live"></span>' : ""}${esc(l.project)}</td>
+            <td class="num clip" title="${esc(l.epic)}">${ref(l.epic)}</td><td>${l.role ? `<span class="role">${esc(l.role)}</span>` : ""}</td>
+            <td class="num clip" title="${esc(l.task)}">${ref(l.task)}</td><td class="r num"><span class="muted">try </span>${esc(l.attempt)}</td>
+            <td class="r num muted opt">${mtok(g.output)}</td><td class="r num muted opt">${mtok(g.cacheRead)}</td></tr>`;
+        }).join("") + "</tbody></table></div>";
+
+      const share = (x) => (x == null ? "" : x < 0.001 ? "<0.1%" : (x * 100).toFixed(x < 0.1 ? 1 : 0) + "%");
+      const frees = (x) => (x == null ? "" : `frees ${x < 0.001 ? "" : "~"}${share(x)} of last week's Claude Code use`);
+      const VERDICT = { fits: "Fits", borderline: "Borderline", "does-not-fit": "Doesn't fit" };
+      const day = (iso) => iso.slice(0, 10);
+
+      const fits = (i) => {
+        const el = $("fits");
+        if (!i) { el.innerHTML = ""; return; }
+        const w = i.week;
+        const rec = i.recommendation;
+        const laneRows = (list) => list.length ? `<div class="scroll"><table class="compact"><thead><tr><th>Project</th><th class="r">Median</th><th class="r opt">p90</th><th class="r">Lanes</th><th class="r">Per ${usd0(i.budgetUsd)}</th></tr></thead><tbody>` +
+          list.map((l) => `<tr><td class="clip" title="${esc(l.project)}">${esc(l.project)}</td><td class="r num">${usd(l.medianUsd)}</td><td class="r num muted opt">${usd(l.p90Usd)}</td><td class="r num muted">${l.lanes}</td><td class="r num"><b>${l.lanesPerBudget ?? "–"}</b></td></tr>`).join("") +
+          "</tbody></table></div>" : '<p class="muted">No lanes in this window.</p>';
+        const projects = i.byProject.map((p) => `<li><span class="name">${esc(p.project)}<span class="tag">${p.kind === "non-ui" ? "non-UI" : p.kind === "ui" ? "UI" : esc(p.kind)}</span></span>
+            <span class="cost num">${usd(p.costUsd)}<span class="pill ${p.verdict}">${VERDICT[p.verdict]}</span></span>
+            <span class="sub num">${pct(p.budgetShare)} of the budget${p.weekShare ? ` · last week ${share(p.weekShare)} of Claude Code use` : ""}</span></li>`).join("");
+        const items = i.nonUi.items.map((it) => `<li><span class="name">${esc(it.label)}</span><span class="cost num">${usd(it.costUsd)}</span>
+            <span class="sub num">${pct(it.costUsd / i.budgetUsd)} of the budget${it.weekShare != null ? ` · on the API, ${frees(it.weekShare)}` : ""}</span></li>`).join("") +
+          `<li class="total"><span class="name"><b>All small roles together</b></span><span class="cost num">${usd(i.nonUi.smallRoles.costUsd)}</span>
+            <span class="sub num">${pct(i.nonUi.smallRoles.costUsd / i.budgetUsd)} of the budget${i.nonUi.smallRoles.weekShare != null ? ` · on the API, ${frees(i.nonUi.smallRoles.weekShare)}` : ""}</span></li>`;
+        el.innerHTML = `<h2>What fits in ${usd0(i.budgetUsd)} of API credit <span class="muted">trailing 30 days, ${day(i.window.from)} to ${day(i.window.to)}, at API prices</span></h2>
+          <div class="rec">
+            <p class="lede">${rec.packed.length
+              ? `Move <b>${rec.packed.map((p) => esc(p.label)).join(", ")}</b> to the API: <b class="num">${usd(rec.usedUsd)}</b> a month, <span class="num">${usd(rec.leftUsd)}</span> left.`
+              : "Nothing non-UI fits in the budget on its own."}
+              ${rec.weekShare != null ? `That ${frees(rec.weekShare)}.` : ""}</p>
+            ${rec.skipped.length ? `<p class="note">Packed cheapest first. Did not fit: ${rec.skipped.map((p) => `${esc(p.label)} (${usd0(p.costUsd)})`).join(", ")}.</p>` : ""}
+          </div>
+          <p class="note">The credit pays for the Claude API and Agent SDK, not Claude Code, so each line assumes that lane runs on the Agent SDK. “Last week’s Claude Code use” is a share of what you actually used in the last 7 days, not of the plan limit.</p>
+          <div class="fits-grid">
+            <div><h3>Non-UI work <span class="muted">a month</span></h3><ul class="rows">${items}</ul></div>
+            <div><h3>Whole project <span class="muted">a month, against ${usd0(i.budgetUsd)}</span></h3><ul class="rows">${projects}</ul></div>
+            <div><h3>One builder lane <span class="muted">cost per attempt</span></h3>${laneRows(i.builderLanes)}</div>
+            <div><h3>One integration lane <span class="muted">cost per attempt</span></h3>${laneRows(i.integrationLanes)}</div>
+          </div>
+          ${w ? `<p class="note num">Last 7 days of Claude Code (${day(w.from)} to ${day(w.to)}, every session on this Mac, AFK included): ${usd(w.costUsd)} at API prices, ${mtok(w.tokens.input + w.tokens.output + w.tokens.cacheWrite5m + w.tokens.cacheWrite1h + w.tokens.cacheRead)} tokens (${mtok(w.tokens.output)} output, ${mtok(w.tokens.cacheRead)} cache reads), ${w.messages.toLocaleString("en-US")} messages.${w.unpriced ? ` ${w.unpriced} messages had no known price.` : ""}</p>` : ""}`;
+      };
+
+      const render = (r) => {
+        budget(r);
+        fits(r.insights);
+        $("live").innerHTML = `<h2>Running now <span class="muted">transcript written in the last 5 minutes</span></h2>` +
+          (r.live.length ? laneTable(r.live, r.live[0].costUsd || 1) : '<p class="muted">Nothing is running.</p>');
+        const total = r.spentUsd;
+        $("groups").innerHTML =
+          bars("role", "By role", r.byRole, total) + bars("project", "By project", r.byProject, total) +
+          bars("epic", "By epic", r.byEpic, total) + bars("model", "By model", r.byModel, total, (k) => k.replace(/^claude-/, ""));
+        const limit = expanded.has("lanes") ? r.byLane.length : 25;
+        $("lanes").innerHTML = `<h2>Cost per lane <span class="muted">one row per attempt, most expensive first</span></h2>` +
+          (r.byLane.length ? laneTable(r.byLane.slice(0, limit), r.byLane[0].costUsd || 1) : '<p class="muted">No lanes yet.</p>') +
+          (r.byLane.length > 25 ? `<button class="more" data-toggle="lanes">${expanded.has("lanes") ? "Show top 25" : `Show all ${r.byLane.length}`}</button>` : "");
+        $("foot").textContent = `Updated ${new Date().toLocaleTimeString()}. Refreshes every 30 seconds.`;
+      };
+
+      const load = async () => {
+        try {
+          const res = await fetch("/usage" + (allTime ? "?all=1" : ""));
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          last = await res.json();
+          render(last);
+        } catch (e) {
+          $("foot").innerHTML = `<span class="err">Could not load usage: ${esc(e.message)}</span>`;
+        }
+      };
+      document.addEventListener("click", (e) => {
+        const t = e.target.closest("[data-toggle]");
+        if (!t) return;
+        const id = t.dataset.toggle;
+        expanded.has(id) ? expanded.delete(id) : expanded.add(id);
+        if (last) render(last);
+      });
+      const setPeriod = (all) => {
+        allTime = all;
+        $("p-month").setAttribute("aria-pressed", String(!all));
+        $("p-all").setAttribute("aria-pressed", String(all));
+        load();
+      };
+      $("p-month").addEventListener("click", () => setPeriod(false));
+      $("p-all").addEventListener("click", () => setPeriod(true));
+      load();
+      setInterval(load, 30_000);
+    </script>
+  </body>
+</html>

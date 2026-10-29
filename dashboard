@@ -1,0 +1,22 @@
+#!/bin/sh
+# Open the AFK dashboard's lane-efficiency page (the spending page links from it)
+# on the dashboard's own port: PORT if set, else the port derived from the
+# caller's cwd, which is the root the server serves. The hub port (4099) is
+# never read or touched. A server already on that port is reused only when it
+# runs this checkout's server; one from another checkout (older code) is
+# stopped and this one started in its place.
+here="$(cd "$(dirname "$0")" && pwd)"
+server="$here/scripts/dashboard-server.mjs"
+port="${PORT:-$(node -e 'import(process.argv[1]).then((m) => console.log(m.derivedDashboardPort(process.cwd())))' "$here/scripts/dashboard-process.mjs")}"
+export PORT="$port"
+url="http://127.0.0.1:$port/lanes.html"
+echo "AFK lanes: $url"
+pid="$(lsof -ti "tcp:$port" -sTCP:LISTEN 2>/dev/null | head -n 1)"
+if [ -n "$pid" ]; then
+  if ps -o command= -p "$pid" | grep -qF "$server"; then open "$url"; exit 0; fi
+  echo "Stopping the dashboard on port $port (pid $pid): it is not $server"
+  kill "$pid"
+  while lsof -ti "tcp:$port" -sTCP:LISTEN >/dev/null 2>&1; do sleep 0.2; done
+fi
+( sleep 2; open "$url" ) &
+exec node "$server" "$@"

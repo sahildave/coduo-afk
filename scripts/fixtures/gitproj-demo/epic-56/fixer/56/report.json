@@ -1,0 +1,105 @@
+{
+  "version": 1,
+  "ranAt": "2026-08-24T01:51:17.679Z",
+  "durationMs": 75444,
+  "items": [
+    {
+      "id": "F1",
+      "source": "must-fix",
+      "title": "Update README.md: add `list` to the documented command list and to the pinned usage line, and document the --json flag.",
+      "detail": null,
+      "file": null,
+      "sources": [
+        "must-fix"
+      ]
+    },
+    {
+      "id": "F2",
+      "source": "must-fix",
+      "title": "Assert the list output order without sorting, so criterion 53.1's 'in that order' is actually pinned by a test.",
+      "detail": null,
+      "file": null,
+      "sources": [
+        "must-fix"
+      ]
+    },
+    {
+      "id": "F3",
+      "source": "blocker finding (standards)",
+      "title": "README.md still documents the pre-epic CLI contract",
+      "detail": "README's `## CLI` section states `Commands: greet, cheer, farewell, motto, version, all.` and pins the exact usage line without `list`. Both are now false on this branch, and --json is undocumented there. README is the repo's stated CLI contract and the test file's own comment cites it as such.",
+      "file": "README.md",
+      "sources": [
+        "blocker finding (standards)"
+      ]
+    },
+    {
+      "id": "F4",
+      "source": "major finding (spec)",
+      "title": "The list test sorts, so the required output order is never asserted",
+      "detail": "Criterion 53.1 requires the six names 'one per line, in that order'. The test compares [...names].sort() against a sorted constant, so reordering src/list.js leaves the suite green. Its comment also claims it catches an unlisted command, but it would instead fail if list ever listed itself.",
+      "file": "test/smoke.test.mjs",
+      "sources": [
+        "major finding (spec)"
+      ]
+    },
+    {
+      "id": "F5",
+      "source": "acceptance criterion 55.3 (partial)",
+      "title": "A new test asserts `node src/cli.js list` exits 0 and prints the expected command names, one per line.",
+      "detail": null,
+      "file": null,
+      "sources": [
+        "acceptance criterion 55.3 (partial)"
+      ]
+    }
+  ],
+  "rawPath": "/Users/developer/code/projects/gitproj-demo/.afk/fixer/56/stream.jsonl",
+  "rawTail": "nderlying defects were real and are fixed. README's ## CLI section now lists `list` in the commands sentence and the pinned usage line, and documents --json with a verified example (F1/F3, the same defect stated twice). The list smoke test now asserts the six names in order via a LIST_ORDER constant instead of comparing sorted arrays, and the membership cross-check against the suite's file list was rewired to compare LIST_ORDER to the files so its comment is finally true (F2/F4, same defect; F5's criterion 55.3 goes from partial to met by the same change since the test now asserts exit 0 plus the expected names one per line in order). Verified the new assertion actually bites by reordering src/list.js and watching the suite fail, then restoring it. `node src/greet.js` exits 0 and the full suite is 15/15. Nothing deferred; no adjacent code touched.\\\",\\n  \\\"fixed\\\": [\\n    { \\\"id\\\": \\\"F1\\\", \\\"detail\\\": \\\"Added `list` to README's `Commands:` sentence and to the pinned usage line, and added a `--json` section with an example whose output was produced by running the CLI.\\\", \\\"files\\\": [\\\"README.md\\\"] },\\n    { \\\"id\\\": \\\"F2\\\", \\\"detail\\\": \\\"The list test now does deepEqual(names, LIST_ORDER) with no sorting, so the required print order is pinned; confirmed by reordering src/list.js and seeing the suite fail.\\\", \\\"files\\\": [\\\"test/smoke.test.mjs\\\"] },\\n    { \\\"id\\\": \\\"F3\\\", \\\"detail\\\": \\\"Same README change as F1 — the ## CLI section no longer states the pre-epic contract.\\\", \\\"files\\\": [\\\"README.md\\\"] },\\n    { \\\"id\\\": \\\"F4\\\", \\\"detail\\\": \\\"Same test change as F2. The misleading comment was also corrected: the drift check now compares LIST_ORDER against the suite's command files, which is the unlisted-command check it always claimed to be, and it no longer implies list must list itself.\\\", \\\"files\\\": [\\\"test/smoke.test.mjs\\\"] },\\n    { \\\"id\\\": \\\"F5\\\", \\\"detail\\\": \\\"Criterion 55.3 is now fully met: the existing test asserts exit 0 and, after this change, the exact expected names one per line in order rather than as an unordered set.\\\", \\\"files\\\": [\\\"test/smoke.test.mjs\\\"] }\\n  ],\\n  \\\"deferred\\\": []\\n}\\n```\"}],\"stop_reason\":null,\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2,\"cache_creation_input_tokens\":382,\"cache_read_input_tokens\":46678,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":382},\"output_tokens\":1,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"},\"diagnostics\":null,\"context_management\":null},\"parent_tool_use_id\":null,\"session_id\":\"c6a4b2b4-cf44-44a0-b155-0234dd0e9135\",\"uuid\":\"b8141c96-8099-4bc6-8d2a-50a491b2dac3\",\"timestamp\":\"2026-08-24T01:51:14.930Z\",\"request_id\":\"req_011CeLjcFetyJJ2L87kWNyVB\"}\n{\"type\":\"system\",\"subtype\":\"post_turn_summary\",\"summarizes_uuid\":\"b8141c96-8099-4bc6-8d2a-50a491b2dac3\",\"status_category\":\"review_ready\",\"status_detail\":\"resolved all 5 findings (F1-F5): docs, test order assertions, criterion 55.3 met\",\"needs_action\":\"\",\"uuid\":\"83d41dc6-9175-49fb-b4aa-78bf1a55db84\",\"session_id\":\"c6a4b2b4-cf44-44a0-b155-0234dd0e9135\"}\n{\"is_error\":false,\"duration_api_ms\":65102,\"num_turns\":13,\"stop_reason\":\"end_turn\",\"session_id\":\"c6a4b2b4-cf44-44a0-b155-0234dd0e9135\",\"total_cost_usd\":0.6697654999999999,\"usage\":{\"input_tokens\":22,\"cache_creation_input_tokens\":33741,\"cache_read_input_tokens\":434041,\"output_tokens\":4609,\"output_tokens_details\":{\"thinking_tokens\":773},\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":33741,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"not_available\",\"iterations\":[{\"input_tokens\":2,\"output_tokens\":1151,\"cache_read_input_tokens\":46678,\"cache_creation_input_tokens\":382,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":382},\"type\":\"message\"}],\"speed\":\"standard\"},\"modelUsage\":{\"claude-opus-5\":{\"inputTokens\":22,\"outputTokens\":4609,\"cacheReadInputTokens\":434041,\"cacheCreationInputTokens\":33741,\"webSearchRequests\":0,\"costUSD\":0.6697654999999999,\"contextWindow\":1000000,\"maxOutputTokens\":64000,\"canonicalModel\":\"claude-opus-5\",\"provider\":\"firstParty\"}},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"fast_mode_disabled_reason\":\"sdk_opt_in_required\",\"subagent_stats\":{\"spawned\":0,\"requested\":{\"background\":0,\"foreground\":0,\"unset\":0},\"started_in_background\":0,\"max_depth\":0,\"spawned_by_subagents\":0,\"completed\":0,\"failed\":0,\"killed\":{\"parent\":0,\"user\":0,\"system\":0},\"refused\":{\"depth_limit\":0,\"concurrency_limit\":0,\"budget\":0},\"by_type\":{}},\"subtype\":\"success\",\"api_error_status\":null,\"result\":\"**All five findings resolved, nothing deferred.** Two real defects, each worded twice.\\n\\n**1 → README now matches the branch.** Added `list` to the commands sentence and the pinned usage line, and documented `--json` with a worked example. I verified the example output by actually running `node src/cli.js greet --json`, so the doc isn't a guess.\\n\\n**2 → The list test pins order, not just membership.** Replaced `[...names].sort()` with an in-order `deepEqual` against `LIST_ORDER`. The sorted cross-check against the suite's file list stays, but now compares `LIST_ORDER` to the files, which is what the old comment claimed it did. I proved it bites: swapping two names in `src/list.js` turns the suite red (14 pass / 1 fail), then restored the file.\\n\\n**Checks:** `node src/greet.js` exits 0, and the full suite is 15/15 green. Committed as `fffc5e8`, not pushed.\\n\\n**Also found:** `docs/commands.md` already lists `list` correctly, so it needed no change. `src/format.js`'s header comment still says \\\"Nothing calls it yet\\\" although `cli.js` now imports it. Out of scope for these findings, so I left it.\\n\\n```json\\n{\\n  \\\"summary\\\": \\\"Both underlying defects were real and are fixed. README's ## CLI section now lists `list` in the commands sentence and the pinned usage line, and documents --json with a verified example (F1/F3, the same defect stated twice). The list smoke test now asserts the six names in order via a LIST_ORDER constant instead of comparing sorted arrays, and the membership cross-check against the suite's file list was rewired to compare LIST_ORDER to the files so its comment is finally true (F2/F4, same defect; F5's criterion 55.3 goes from partial to met by the same change since the test now asserts exit 0 plus the expected names one per line in order). Verified the new assertion actually bites by reordering src/list.js and watching the suite fail, then restoring it. `node src/greet.js` exits 0 and the full suite is 15/15. Nothing deferred; no adjacent code touched.\\\",\\n  \\\"fixed\\\": [\\n    { \\\"id\\\": \\\"F1\\\", \\\"detail\\\": \\\"Added `list` to README's `Commands:` sentence and to the pinned usage line, and added a `--json` section with an example whose output was produced by running the CLI.\\\", \\\"files\\\": [\\\"README.md\\\"] },\\n    { \\\"id\\\": \\\"F2\\\", \\\"detail\\\": \\\"The list test now does deepEqual(names, LIST_ORDER) with no sorting, so the required print order is pinned; confirmed by reordering src/list.js and seeing the suite fail.\\\", \\\"files\\\": [\\\"test/smoke.test.mjs\\\"] },\\n    { \\\"id\\\": \\\"F3\\\", \\\"detail\\\": \\\"Same README change as F1 — the ## CLI section no longer states the pre-epic contract.\\\", \\\"files\\\": [\\\"README.md\\\"] },\\n    { \\\"id\\\": \\\"F4\\\", \\\"detail\\\": \\\"Same test change as F2. The misleading comment was also corrected: the drift check now compares LIST_ORDER against the suite's command files, which is the unlisted-command check it always claimed to be, and it no longer implies list must list itself.\\\", \\\"files\\\": [\\\"test/smoke.test.mjs\\\"] },\\n    { \\\"id\\\": \\\"F5\\\", \\\"detail\\\": \\\"Criterion 55.3 is now fully met: the existing test asserts exit 0 and, after this change, the exact expected names one per line in order rather than as an unordered set.\\\", \\\"files\\\": [\\\"test/smoke.test.mjs\\\"] }\\n  ],\\n  \\\"deferred\\\": []\\n}\\n```\",\"ttft_ms\":3120,\"ttft_stream_ms\":2378,\"time_to_request_ms\":221,\"type\":\"result\",\"duration_ms\":71853,\"uuid\":\"9794f4ff-1e60-465d-a522-0c2db6041d90\"}\n{\"type\":\"system\",\"subtype\":\"task_summary\",\"detail\":null,\"uuid\":\"f83a9dbf-eb45-4e8a-a7f1-b97a33579728\",\"session_id\":\"c6a4b2b4-cf44-44a0-b155-0234dd0e9135\"}\n",
+  "status": "ok",
+  "problems": [],
+  "summary": "Both underlying defects were real and are fixed. README's ## CLI section now lists `list` in the commands sentence and the pinned usage line, and documents --json with a verified example (F1/F3, the same defect stated twice). The list smoke test now asserts the six names in order via a LIST_ORDER constant instead of comparing sorted arrays, and the membership cross-check against the suite's file list was rewired to compare LIST_ORDER to the files so its comment is finally true (F2/F4, same defect; F5's criterion 55.3 goes from partial to met by the same change since the test now asserts exit 0 plus the expected names one per line in order). Verified the new assertion actually bites by reordering src/list.js and watching the suite fail, then restoring it. `node src/greet.js` exits 0 and the full suite is 15/15. Nothing deferred; no adjacent code touched.",
+  "fixed": [
+    {
+      "id": "F1",
+      "title": "Update README.md: add `list` to the documented command list and to the pinned usage line, and document the --json flag.",
+      "detail": "Added `list` to README's `Commands:` sentence and to the pinned usage line, and added a `--json` section with an example whose output was produced by running the CLI.",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "id": "F2",
+      "title": "Assert the list output order without sorting, so criterion 53.1's 'in that order' is actually pinned by a test.",
+      "detail": "The list test now does deepEqual(names, LIST_ORDER) with no sorting, so the required print order is pinned; confirmed by reordering src/list.js and seeing the suite fail.",
+      "files": [
+        "test/smoke.test.mjs"
+      ]
+    },
+    {
+      "id": "F3",
+      "title": "README.md still documents the pre-epic CLI contract",
+      "detail": "Same README change as F1 — the ## CLI section no longer states the pre-epic contract.",
+      "files": [
+        "README.md"
+      ]
+    },
+    {
+      "id": "F4",
+      "title": "The list test sorts, so the required output order is never asserted",
+      "detail": "Same test change as F2. The misleading comment was also corrected: the drift check now compares LIST_ORDER against the suite's command files, which is the unlisted-command check it always claimed to be, and it no longer implies list must list itself.",
+      "files": [
+        "test/smoke.test.mjs"
+      ]
+    },
+    {
+      "id": "F5",
+      "title": "A new test asserts `node src/cli.js list` exits 0 and prints the expected command names, one per line.",
+      "detail": "Criterion 55.3 is now fully met: the existing test asserts exit 0 and, after this change, the exact expected names one per line in order rather than as an unordered set.",
+      "files": [
+        "test/smoke.test.mjs"
+      ]
+    }
+  ],
+  "deferred": []
+}

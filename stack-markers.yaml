@@ -1,0 +1,60 @@
+# How `afk stack detect` recognises a stack from the repo itself, for the case
+# where a stack is present but its plugin was never enabled. Purely advisory:
+# detect reports the mismatch, it does not enable anything.
+#
+# `deps` matches a ROOT package.json dependency name exactly. `files` matches a
+# tracked path at the repo root or ONE level below it — `*` matches within a
+# single path segment, so `*/Cargo.toml` finds `src-tauri/Cargo.toml` and does
+# NOT find `src-tauri/vendor/sacp-tokio/Cargo.toml`. One level is deliberate:
+# it reaches every real layout in this estate and excludes the vendored copies,
+# Pods and recipe templates that a deeper scan drags in. `plugin` names the
+# plugin that covers this stack, when one exists.
+
+nextjs:
+  # No `plugin:` — the official `vercel` plugin is switched off in every repo
+  # that has one, so naming it here produced a "not enabled as a plugin: vercel"
+  # nag for a plugin four repos had deliberately refused.
+  deps: [next]
+react:
+  deps: [react]
+react-native:
+  deps: [react-native]
+expo:
+  deps: [expo]
+  plugin: expo
+vitest:
+  deps: [vitest]
+jest:
+  deps: [jest]
+supabase:
+  deps: ["@supabase/supabase-js"]
+  files: [supabase/config.toml]
+  plugin: supabase
+firebase:
+  deps: [firebase, firebase-admin]
+  plugin: firebase
+stripe:
+  deps: [stripe, "@stripe/stripe-js"]
+  plugin: stripe
+posthog:
+  deps: [posthog-js, posthog-node]
+  plugin: posthog
+cloudflare:
+  deps: ["@aws-sdk/client-s3", wrangler]
+  files: [wrangler.toml]
+  plugin: cloudflare
+swift:
+  # Three ways an Apple project declares itself, each at the root or one level
+  # down: SPM, an xcodegen spec, or the generated bundle. Lumina keeps all of
+  # its under `prototype/`; voice-studio and trip-journal-demo would match on
+  # `ios/` if they tracked it, which is what the react-native precedence rule in
+  # detectStacks is for.
+  files: [Package.swift, project.yml, "*.xcodeproj", "*/Package.swift", "*/project.yml", "*/*.xcodeproj"]
+rust:
+  files: [Cargo.toml, "*/Cargo.toml"]
+tauri:
+  # The config, not the directory: `src-tauri/` exists in a repo that has torn
+  # Tauri out, and atlas-workspace' defaultChecks are half Rust either way.
+  files: [tauri.conf.json, "*/tauri.conf.json"]
+python:
+  files: [pyproject.toml, requirements.txt, setup.py]

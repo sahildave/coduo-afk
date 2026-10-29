@@ -1,0 +1,4 @@
+{"type":"thread.started","thread_id":"fake"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"m1","type":"agent_message","text":"The ticket quotes the old failure \"You've hit your usage limit\" and \"401 Unauthorized: Missing bearer\"; neither applies to this lane."}}
+{"type":"turn.completed","usage":{"input_tokens":1,"output_tokens":1}}

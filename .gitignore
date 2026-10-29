@@ -1,0 +1,10 @@
+.DS_Store
+.afk/
+.afk-report.json
+docs/reflection-clusters.json
+
+# Private run output. AFK_REFLECTIONS_ROOT and AFK_MEASURE_ROOT point these at a
+# separate repo; the entries stop a run without them from committing it here.
+docs/reflection/
+docs/measure/
+graphify-out/

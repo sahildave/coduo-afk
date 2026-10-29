@@ -1,0 +1,15 @@
+{
+  "extraKnownMarketplaces": {
+    "coduo-agents": {
+      "source": {
+        "source": "github",
+        "repo": "sahildave/coduo-agents-marketplace"
+      },
+      "autoUpdate": true
+    }
+  },
+  "enabledPlugins": {
+    "authored@coduo-agents": true,
+    "mattpocock@coduo-agents": true
+  }
+}

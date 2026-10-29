@@ -1,0 +1,30 @@
+{
+  "taskId": "45",
+  "attempt": 1,
+  "branch": "afk/task-45",
+  "worktree": "/Users/developer/.afk-claude/worktrees/Users-developer-code-projects-gitproj-demo/45",
+  "baseSha": "547ab6aa074b6ebd8d1e50ff71916c9ace4d28c3",
+  "agentExitCode": 0,
+  "timedOut": false,
+  "durationMs": 30980,
+  "rateLimited": false,
+  "tokens": {
+    "input": 0,
+    "output": 0,
+    "cacheRead": 0
+  },
+  "revertedProtected": [],
+  "keptOutsideDeclaredPaths": [],
+  "producedFiles": [
+    "src/cli.js"
+  ],
+  "builderCommitsRemoved": [],
+  "blocked": false,
+  "checks": [
+    {
+      "command": "node src/greet.js",
+      "code": 0,
+      "output": "Hello from AFK lane 001\n"
+    }
+  ]
+}

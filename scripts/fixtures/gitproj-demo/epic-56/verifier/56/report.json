@@ -1,0 +1,257 @@
+{
+  "version": 1,
+  "status": "ok",
+  "epic": {
+    "id": "56",
+    "title": "Epic: CLI JSON formatting + list command"
+  },
+  "branch": "feat/cli-json",
+  "baseBranch": "feat/cli-surface",
+  "head": "77684eab00c63cc7f7683ccfa7b8d3c401ccfb78",
+  "ranAt": "2026-08-24T01:46:15.293Z",
+  "durationMs": 226929,
+  "outstanding": [],
+  "summary": "Epic #56 delivers what it promised: src/cli.js gains a --json flag that captures a command's console.log output and re-emits it through format(), the list command is added to the allowlist and implemented as a dependency-free src/list.js, docs/commands.md documents all seven commands, and test/smoke.test.mjs gains five tests. I ran the suite (15/15 pass) and exercised every CLI path by hand. Sixteen of seventeen criteria are met. What is wrong: README.md is the repo's documented CLI contract and is now false, still listing six commands and the pre-list usage line, with --json undocumented entirely; no ticket in this epic owned it, though the preceding epic had an explicit README-wiring task. Secondarily, the new list test sorts both sides before comparing, so the ordering that 53.1 makes explicit is unasserted, and the --json capture hooks console.log rather than stdout, so a future command using process.stdout.write would leak raw text alongside the JSON.",
+  "criteria": [
+    {
+      "id": "52.1",
+      "taskId": "52",
+      "source": "task",
+      "text": "`node src/cli.js <command> --json` prints the command's captured stdout output run through `format()` with `{ json: true }`, instead of the command's raw console output.",
+      "verdict": "met",
+      "evidence": "src/cli.js --json branch; ran `node src/cli.js all --json` -> {\"output\":\"Hello from AFK lane 001\\nGoodbye...\"}"
+    },
+    {
+      "id": "52.2",
+      "taskId": "52",
+      "source": "task",
+      "text": "`node src/cli.js <command>` with no `--json` flag produces byte-identical stdout/stderr/exit-code to the current dispatcher behavior (regression guard — no change without the flag).",
+      "verdict": "met",
+      "evidence": "src/cli.js `if (!json) require(...)` leaves the original path untouched; test 'src/cli.js greet without --json is unchanged'"
+    },
+    {
+      "id": "52.3",
+      "taskId": "52",
+      "source": "task",
+      "text": "`src/cli.js` requires `format` from `./format.js` (relative require, no new dependency).",
+      "verdict": "met",
+      "evidence": "src/cli.js:3 `const { format } = require('./format.js');`"
+    },
+    {
+      "id": "52.4",
+      "taskId": "52",
+      "source": "task",
+      "text": "`list` is added to the `COMMANDS` allowlist in `src/cli.js`, so `node src/cli.js list` dispatches to `./list.js` the same way every other command does.",
+      "verdict": "met",
+      "evidence": "src/cli.js COMMANDS array now ends `'all', 'list'`; ran `node src/cli.js list` successfully"
+    },
+    {
+      "id": "52.5",
+      "taskId": "52",
+      "source": "task",
+      "text": "An unknown command still exits 1 and prints the existing usage line (now including `list`) to stderr, with or without `--json` present in argv.",
+      "verdict": "met",
+      "evidence": "ran `node src/cli.js bogus --json` -> exit 1, stderr `usage: node src/cli.js <greet|cheer|farewell|motto|version|all|list>`"
+    },
+    {
+      "id": "53.1",
+      "taskId": "53",
+      "source": "task",
+      "text": "`src/list.js` prints, via `console.log`, exactly the six existing command names — `greet`, `cheer`, `farewell`, `motto`, `version`, `all` — one per line, in that order, at require/run time (same pattern as `src/greet.js`, `src/version.js`, etc.).",
+      "verdict": "met",
+      "evidence": "src/list.js single console.log of ['greet','cheer','farewell','motto','version','all'].join('\\n'); output verified in that order"
+    },
+    {
+      "id": "53.2",
+      "taskId": "53",
+      "source": "task",
+      "text": "Running it directly as `node src/list.js` exits 0 and produces no stderr output.",
+      "verdict": "met",
+      "evidence": "ran `node src/list.js` -> exit 0, no stderr emitted"
+    },
+    {
+      "id": "53.3",
+      "taskId": "53",
+      "source": "task",
+      "text": "It has no `require('./cli.js')` or other cross-file dependency — the command names are hardcoded in `src/list.js`, not read from `src/cli.js`'s `COMMANDS` array.",
+      "verdict": "met",
+      "evidence": "src/list.js is 3 lines, contains no require() call at all"
+    },
+    {
+      "id": "53.4",
+      "taskId": "53",
+      "source": "task",
+      "text": "Once #52's dispatcher change is integrated, `node src/cli.js list` (which requires `./list.js`) produces the same stdout as running `node src/list.js` directly.",
+      "verdict": "met",
+      "evidence": "ran `node src/list.js` and `node src/cli.js list`; stdout byte-identical"
+    },
+    {
+      "id": "54.1",
+      "taskId": "54",
+      "source": "task",
+      "text": "`docs/commands.md` contains a Markdown table (or equivalent list) with one row per command: `greet`, `cheer`, `farewell`, `motto`, `version`, `all`, and `list`.",
+      "verdict": "met",
+      "evidence": "docs/commands.md Markdown table, seven rows including `list`"
+    },
+    {
+      "id": "54.2",
+      "taskId": "54",
+      "source": "task",
+      "text": "Each of the six pre-existing rows states its exact invocation (e.g. `node src/greet.js`) and a one-line description consistent with `docs/usage.md` and each script's actual printed output.",
+      "verdict": "met",
+      "evidence": "docs/commands.md rows cross-checked line-by-line against docs/usage.md and against live output of motto/version/all --json"
+    },
+    {
+      "id": "54.3",
+      "taskId": "54",
+      "source": "task",
+      "text": "The `list` row states its invocation as `node src/cli.js list` and describes it as printing the available command names, one per line.",
+      "verdict": "met",
+      "evidence": "docs/commands.md `| list | node src/cli.js list | Prints the available command names, one per line. |`"
+    },
+    {
+      "id": "54.4",
+      "taskId": "54",
+      "source": "task",
+      "text": "The file does not mention `--json` or any other flag/command introduced by a sibling ticket in this epic beyond `list`.",
+      "verdict": "met",
+      "evidence": "grep of docs/commands.md in the diff: no occurrence of `--json` or any sibling flag"
+    },
+    {
+      "id": "55.1",
+      "taskId": "55",
+      "source": "task",
+      "text": "A new test asserts `node src/cli.js <command> --json` stdout matches `format(<captured plain output>, { json: true })`'s actual shape, asserted by reading the real return value/shape of `format()` from the merged `src/format.js` (not guessed or hand-copied from memory).",
+      "verdict": "met",
+      "evidence": "test 'src/cli.js greet --json wraps the plain output via format()' imports format from ../src/format.js and builds `expected` from its real return value"
+    },
+    {
+      "id": "55.2",
+      "taskId": "55",
+      "source": "task",
+      "text": "A new test asserts `node src/cli.js <command>` with no `--json` still behaves as before (non-JSON, unchanged stdout).",
+      "verdict": "met",
+      "evidence": "test 'src/cli.js greet without --json is unchanged' compares dispatcher stdout to the direct script and asserts doesNotMatch(/^\\{/)"
+    },
+    {
+      "id": "55.3",
+      "taskId": "55",
+      "source": "task",
+      "text": "A new test asserts `node src/cli.js list` exits 0 and prints the expected command names, one per line.",
+      "verdict": "partial",
+      "evidence": "test 'src/cli.js list prints the command names one per line' asserts exit 0 and the name set, but calls [...names].sort() so per-line order is unpinned"
+    },
+    {
+      "id": "55.4",
+      "taskId": "55",
+      "source": "task",
+      "text": "All existing tests in the file continue to pass unmodified in structure (only additions, no removal of existing coverage).",
+      "verdict": "met",
+      "evidence": "git diff of test/smoke.test.mjs shows only the USAGE constant updated (required by 52.4) plus 43 added lines; no existing test removed or restructured"
+    }
+  ],
+  "findings": [
+    {
+      "axis": "standards",
+      "severity": "blocker",
+      "title": "README.md still documents the pre-epic CLI contract",
+      "detail": "README's `## CLI` section states `Commands: greet, cheer, farewell, motto, version, all.` and pins the exact usage line without `list`. Both are now false on this branch, and --json is undocumented there. README is the repo's stated CLI contract and the test file's own comment cites it as such.",
+      "file": "README.md"
+    },
+    {
+      "axis": "spec",
+      "severity": "major",
+      "title": "The list test sorts, so the required output order is never asserted",
+      "detail": "Criterion 53.1 requires the six names 'one per line, in that order'. The test compares [...names].sort() against a sorted constant, so reordering src/list.js leaves the suite green. Its comment also claims it catches an unlisted command, but it would instead fail if list ever listed itself.",
+      "file": "test/smoke.test.mjs"
+    },
+    {
+      "axis": "spec",
+      "severity": "minor",
+      "title": "--json captures console.log, not stdout",
+      "detail": "Criterion 52.1 says 'captured stdout output'. The implementation monkey-patches console.log only. A command using process.stdout.write or console.info would leak raw text to the terminal and be absent from the JSON payload, yielding mixed plain+JSON stdout. No current command does this, so it is latent.",
+      "file": "src/cli.js"
+    },
+    {
+      "axis": "standards",
+      "severity": "minor",
+      "title": "docs/usage.md gained no entry for list",
+      "detail": "usage.md's documented convention is one section per command describing what it prints. src/list.js was added with no section, so the two command references in docs/ now disagree on how many commands exist.",
+      "file": "docs/usage.md"
+    },
+    {
+      "axis": "standards",
+      "severity": "minor",
+      "title": "Stale comment in src/format.js",
+      "detail": "Line 1 still reads 'Nothing calls it yet; a later ticket wires it in.' Task 52 wired it into the dispatcher this epic.",
+      "file": "src/format.js"
+    },
+    {
+      "axis": "standards",
+      "severity": "minor",
+      "title": "The command list is now duplicated in five places",
+      "detail": "COMMANDS in src/cli.js, the hardcoded array in src/list.js, COMMANDS in test/smoke.test.mjs, docs/commands.md, and README. The duplication is deliberate per criterion 53.3, but the stale README is that decision's cost already being paid.",
+      "file": "src/list.js"
+    },
+    {
+      "axis": "standards",
+      "severity": "minor",
+      "title": "Two unrelated `format` bindings one line apart",
+      "detail": "`const { format } = require('./format.js')` sits directly above `const { format: renderLog } = require('node:util')`. The alias renderLog does not convey util.format's printf-substitution semantics, and every command in the tree logs a single string, so the util import buys little.",
+      "file": "src/cli.js"
+    },
+    {
+      "axis": "spec",
+      "severity": "minor",
+      "title": "docs/progress.md rewritten though no criterion asks for it",
+      "detail": "The epic header and task rows were replaced (45-49 became 52-55). Runner bookkeeping rather than product behaviour, but it is an edit to a tracked doc that no ticket scoped.",
+      "file": "docs/progress.md"
+    }
+  ],
+  "mustFix": [
+    "Update README.md: add `list` to the documented command list and to the pinned usage line, and document the --json flag.",
+    "Assert the list output order without sorting, so criterion 53.1's 'in that order' is actually pinned by a test."
+  ],
+  "skipped": [
+    {
+      "tool": "gh",
+      "reason": "Bash invocation of `gh issue view 56` was denied in this sandbox; spec verification relied on the criteria text supplied in the task rather than the live issue bodies."
+    },
+    {
+      "tool": "lint",
+      "reason": "No linter configured in the repo — no package.json, eslint config, or equivalent is tracked, so there is no lint gate to run."
+    },
+    {
+      "tool": "typecheck",
+      "reason": "Plain JavaScript project with no tsconfig.json or type annotations; no typecheck gate exists."
+    },
+    {
+      "tool": "build",
+      "reason": "README states 'no build step'; no build tooling is tracked in the repo."
+    }
+  ],
+  "problems": [],
+  "prose": "I'll start by establishing the branch state and reading the diff.\n\nGit command was denied. Let me retry it as separate calls.\n\nAll 15 tests pass. Now the manual behavior probes and the `/code-review` skill.\n\nAll doc claims check out. Now running the `/code-review` skill as Step 1 requires.\n\nFound a stale README. Now spawning the two review axes in parallel per the skill.\n\nI'll start by reading the standards sources and the diff.\n\nI'll review the diff against the spec.\n\nWaiting on both review axes. Meanwhile, current state:\n\n**→ Tests pass.** All 15 in `test/smoke.test.mjs`, including the 5 new ones. Verified by running the suite.\n\n**→ Found one real gap already.** `README.md` still documents the old usage line `usage: node src/cli.js <greet|cheer|farewell|motto|version|all>` and the six-command list. The branch changed both. No task in this epic owned README, and the previous epic explicitly had a \"wire CLI surface into README\" task, so this is an epic-level omission.\n\n## STANDARDS review — `feat/cli-surface...HEAD`\n\n### Hard violations (documented standards)\n\n**README.md is now false and was not updated.** README (`## CLI`) is the documented CLI contract: it states `Commands: greet, cheer, farewell, motto, version, all.` and pins the exact usage line `usage: node src/cli.js <greet|cheer|farewell|motto|version|all>`. The diff adds `list` to `COMMANDS` and updates the usage string in `src/cli.js` and in `test/smoke.test.mjs`, but leaves README stating the old six and the old usage line. The `--json` flag is documented nowhere in README either. (Mitigating: AGENTS.md \"keep changes inside the task's allowed paths\" — but the branch as a whole ships a contradicted README.)\n\n**`docs/usage.md` has no `list` entry.** usage.md's standard is one section per command with \"what every command prints\". `src/list.js` is added with no section. It also opens \"Every command is a standalone Node script\" — yet `docs/commands.md` documents `list` only as `node src/cli.js list` despite `src/list.js` being standalone, and its prose says \"The six standalone scripts\", which is now seven.\n\n**`list` output contradicts its own documentation.** `docs/commands.md`: \"Prints the available command names, one per line.\" `src/list.js` prints six names, omitting `list`, while `cli.js` accepts seven.\n\n### Baseline smells (judgement calls)\n\n**Duplicated Code / Shotgun Surgery** — the command list now lives in five places: `COMMANDS` in `src/cli.js`, the hardcoded array in `src/list.js`, `COMMANDS` in `test/smoke.test.mjs`, `docs/commands.md`, README. `src/list.js` codifies it: `// Names are hardcoded rather than read from cli.js's COMMANDS so this file has no cross-file dependency`. Adding a command means five edits; the drift above is that smell already firing.\n\n**Mysterious Name** — `const { format: renderLog } = require('node:util');` sits one line below `const { format } = require('./format.js');`. Two unrelated `format`s in a 30-line file; `renderLog` reveals nothing about `util.format`'s substitution semantics.\n\n**Middle Man / envy** — the `--json` branch monkey-patches `console.log` to harvest another module's output: `console.log = (...args) => lines.push(renderLog(...args));`. The comment concedes it (\"the only way to reach their output\"). It captures only `console.log`, so `process.stdout.write` or `console.error` output silently escapes the JSON wrapper.\n\n**Test pins the wrong invariant** — `assert.deepEqual([...names].sort(), COMMANDS.map(...))` compares `list` output against the six-file `COMMANDS`. Its comment claims \"adding a command without listing it fails here\", but it actually fails if `list` ever correctly lists itself.\n\n**Stale comment** (outside diff, caused by it) — `/Users/developer/.afk-claude/worktrees/Users-developer-code-projects-gitproj-demo/role-cwd-verify-56/src/format.js:1` still reads \"Nothing calls it yet; a later ticket wires it in.\" Task 52 wired it.\n\nNo dependency was added; AGENTS.md's \"Plain Node, no dependencies\" is respected.\n\nStandards axis is back. Waiting on the Spec axis before I finalize.\n\nSuite: 15/15 pass. All four tickets are substantively implemented.\n\n**(a) Missing or partial**\n\n1. **[55.3]** \"*asserts `node src/cli.js list` exits 0 and prints the expected command names, one per line*\" — the test sorts both sides before comparing (`[...names].sort()` vs `COMMANDS.map(...)`), so the ordering that [53.1] makes explicit (\"*greet, cheer, farewell, motto, version, all — one per line, in that order*\") is not pinned anywhere. Reordering `src/list.js` would keep the suite green. `test/smoke.test.mjs:88-98`.\n2. **[52.5]** \"*An unknown command still exits 1 and prints the existing usage line ... with or without `--json` present in argv*\" — the code satisfies this (the allowlist check precedes the `--json` branch), but no test exercises the `--json` variant; the two usage-path cases are still the pre-existing `[]` and bogus-arg ones. Static reading only; I could not run the unknown-command case here (Bash denied on that invocation).\n\n**(b) Scope creep**\n\n3. `docs/progress.md` was rewritten (epic header + task rows 52-55 replacing 45-49). No criterion in any of the four tickets mentions `docs/progress.md`; the epic's product surface is src/cli.js, src/list.js, test/smoke.test.mjs, docs/commands.md. Harmless bookkeeping, but it is an unrequested product-doc edit.\n4. **[52.3]** \"*`src/cli.js` requires `format` from `./format.js` (relative require, no new dependency)*\" — satisfied, but the diff also adds a second import, `const { format: renderLog } = require('node:util')`, purely to reproduce console.log's argument formatting. Builtin, so not a dependency violation, but it is machinery the spec did not ask for and every command in the tree calls `console.log` with a single string.\n\n**(c) Implemented but looks wrong**\n\n5. **[52.1]** \"*prints the command's **captured stdout** output run through `format()`*\" — `src/cli.js:16-27` captures by monkey-patching `console.log` only, not stdout. Any command writing via `process.stdout.write` (or `console.info`/`console.error`) would bypass the buffer, leak raw text to the terminal *and* be absent from the JSON payload — producing mixed plain+JSON stdout rather than the flag's contract. No current command does this, so it is latent, and the in-file comment acknowledges the approach; worth flagging because `list` was added this epic and the next added command may not follow the pattern.\n6. Minor, [52.1]-adjacent: the `console.log` restore is in a `finally`, but a command that throws still leaves the patched-in output unemitted — the process exits nonzero with nothing printed. Acceptable for this tree.\n\nBoth axes are in. Here's what I found.\n\n**→ The epic works. All 15 tests pass, all 4 tickets landed.** I ran the suite and exercised every path by hand: `--json` wraps output correctly, `list` prints the six names identically standalone and via the dispatcher, unknown commands still exit 1 with the updated usage line.\n\n**→ One thing must be fixed before this ships: `README.md` is now factually wrong.** It's the documented CLI contract, and it still says `Commands: greet, cheer, farewell, motto, version, all.` plus the old usage line without `list`. The branch changed both. `--json` is undocumented there too. The previous epic had a dedicated \"wire CLI surface into README\" task; this one has no equivalent, so nobody owned it.\n\n**→ One test asserts less than it looks like.** The `list` test sorts both sides before comparing, so the \"in that order\" requirement from 53.1 is pinned nowhere. Reordering `src/list.js` keeps the suite green. Its own comment also claims it catches an unlisted command, but it would actually fail if `list` ever listed itself.\n\n**→ The `--json` capture is narrower than \"captured stdout\".** `src/cli.js` monkey-patches `console.log` only. A command using `process.stdout.write` would leak raw text and be missing from the JSON payload. No current command does this, so it's latent, not broken.\n\n**Also found:** `src/format.js:1` still says \"Nothing calls it yet; a later ticket wires it in\" — task 52 wired it. `docs/usage.md` gained no `list` section. `gh` was denied here, so I could not read the issues directly; I worked from the criteria as given.\n\n```json\n{\n  \"summary\": \"Epic #56 delivers what it promised: src/cli.js gains a --json flag that captures a command's console.log output and re-emits it through format(), the list command is added to the allowlist and implemented as a dependency-free src/list.js, docs/commands.md documents all seven commands, and test/smoke.test.mjs gains five tests. I ran the suite (15/15 pass) and exercised every CLI path by hand. Sixteen of seventeen criteria are met. What is wrong: README.md is the repo's documented CLI contract and is now false, still listing six commands and the pre-list usage line, with --json undocumented entirely; no ticket in this epic owned it, though the preceding epic had an explicit README-wiring task. Secondarily, the new list test sorts both sides before comparing, so the ordering that 53.1 makes explicit is unasserted, and the --json capture hooks console.log rather than stdout, so a future command using process.stdout.write would leak raw text alongside the JSON.\",\n  \"criteria\": [\n    { \"id\": \"52.1\", \"verdict\": \"met\", \"evidence\": \"src/cli.js --json branch; ran `node src/cli.js all --json` -> {\\\"output\\\":\\\"Hello from AFK lane 001\\\\nGoodbye...\\\"}\" },\n    { \"id\": \"52.2\", \"verdict\": \"met\", \"evidence\": \"src/cli.js `if (!json) require(...)` leaves the original path untouched; test 'src/cli.js greet without --json is unchanged'\" },\n    { \"id\": \"52.3\", \"verdict\": \"met\", \"evidence\": \"src/cli.js:3 `const { format } = require('./format.js');`\" },\n    { \"id\": \"52.4\", \"verdict\": \"met\", \"evidence\": \"src/cli.js COMMANDS array now ends `'all', 'list'`; ran `node src/cli.js list` successfully\" },\n    { \"id\": \"52.5\", \"verdict\": \"met\", \"evidence\": \"ran `node src/cli.js bogus --json` -> exit 1, stderr `usage: node src/cli.js <greet|cheer|farewell|motto|version|all|list>`\" },\n    { \"id\": \"53.1\", \"verdict\": \"met\", \"evidence\": \"src/list.js single console.log of ['greet','cheer','farewell','motto','version','all'].join('\\\\n'); output verified in that order\" },\n    { \"id\": \"53.2\", \"verdict\": \"met\", \"evidence\": \"ran `node src/list.js` -> exit 0, no stderr emitted\" },\n    { \"id\": \"53.3\", \"verdict\": \"met\", \"evidence\": \"src/list.js is 3 lines, contains no require() call at all\" },\n    { \"id\": \"53.4\", \"verdict\": \"met\", \"evidence\": \"ran `node src/list.js` and `node src/cli.js list`; stdout byte-identical\" },\n    { \"id\": \"54.1\", \"verdict\": \"met\", \"evidence\": \"docs/commands.md Markdown table, seven rows including `list`\" },\n    { \"id\": \"54.2\", \"verdict\": \"met\", \"evidence\": \"docs/commands.md rows cross-checked line-by-line against docs/usage.md and against live output of motto/version/all --json\" },\n    { \"id\": \"54.3\", \"verdict\": \"met\", \"evidence\": \"docs/commands.md `| list | node src/cli.js list | Prints the available command names, one per line. |`\" },\n    { \"id\": \"54.4\", \"verdict\": \"met\", \"evidence\": \"grep of docs/commands.md in the diff: no occurrence of `--json` or any sibling flag\" },\n    { \"id\": \"55.1\", \"verdict\": \"met\", \"evidence\": \"test 'src/cli.js greet --json wraps the plain output via format()' imports format from ../src/format.js and builds `expected` from its real return value\" },\n    { \"id\": \"55.2\", \"verdict\": \"met\", \"evidence\": \"test 'src/cli.js greet without --json is unchanged' compares dispatcher stdout to the direct script and asserts doesNotMatch(/^\\\\{/)\" },\n    { \"id\": \"55.3\", \"verdict\": \"partial\", \"evidence\": \"test 'src/cli.js list prints the command names one per line' asserts exit 0 and the name set, but calls [...names].sort() so per-line order is unpinned\" },\n    { \"id\": \"55.4\", \"verdict\": \"met\", \"evidence\": \"git diff of test/smoke.test.mjs shows only the USAGE constant updated (required by 52.4) plus 43 added lines; no existing test removed or restructured\" }\n  ],\n  \"findings\": [\n    { \"axis\": \"standards\", \"severity\": \"blocker\", \"title\": \"README.md still documents the pre-epic CLI contract\", \"detail\": \"README's `## CLI` section states `Commands: greet, cheer, farewell, motto, version, all.` and pins the exact usage line without `list`. Both are now false on this branch, and --json is undocumented there. README is the repo's stated CLI contract and the test file's own comment cites it as such.\", \"file\": \"README.md\" },\n    { \"axis\": \"spec\", \"severity\": \"major\", \"title\": \"The list test sorts, so the required output order is never asserted\", \"detail\": \"Criterion 53.1 requires the six names 'one per line, in that order'. The test compares [...names].sort() against a sorted constant, so reordering src/list.js leaves the suite green. Its comment also claims it catches an unlisted command, but it would instead fail if list ever listed itself.\", \"file\": \"test/smoke.test.mjs\" },\n    { \"axis\": \"spec\", \"severity\": \"minor\", \"title\": \"--json captures console.log, not stdout\", \"detail\": \"Criterion 52.1 says 'captured stdout output'. The implementation monkey-patches console.log only. A command using process.stdout.write or console.info would leak raw text to the terminal and be absent from the JSON payload, yielding mixed plain+JSON stdout. No current command does this, so it is latent.\", \"file\": \"src/cli.js\" },\n    { \"axis\": \"standards\", \"severity\": \"minor\", \"title\": \"docs/usage.md gained no entry for list\", \"detail\": \"usage.md's documented convention is one section per command describing what it prints. src/list.js was added with no section, so the two command references in docs/ now disagree on how many commands exist.\", \"file\": \"docs/usage.md\" },\n    { \"axis\": \"standards\", \"severity\": \"minor\", \"title\": \"Stale comment in src/format.js\", \"detail\": \"Line 1 still reads 'Nothing calls it yet; a later ticket wires it in.' Task 52 wired it into the dispatcher this epic.\", \"file\": \"src/format.js\" },\n    { \"axis\": \"standards\", \"severity\": \"minor\", \"title\": \"The command list is now duplicated in five places\", \"detail\": \"COMMANDS in src/cli.js, the hardcoded array in src/list.js, COMMANDS in test/smoke.test.mjs, docs/commands.md, and README. The duplication is deliberate per criterion 53.3, but the stale README is that decision's cost already being paid.\", \"file\": \"src/list.js\" },\n    { \"axis\": \"standards\", \"severity\": \"minor\", \"title\": \"Two unrelated `format` bindings one line apart\", \"detail\": \"`const { format } = require('./format.js')` sits directly above `const { format: renderLog } = require('node:util')`. The alias renderLog does not convey util.format's printf-substitution semantics, and every command in the tree logs a single string, so the util import buys little.\", \"file\": \"src/cli.js\" },\n    { \"axis\": \"spec\", \"severity\": \"minor\", \"title\": \"docs/progress.md rewritten though no criterion asks for it\", \"detail\": \"The epic header and task rows were replaced (45-49 became 52-55). Runner bookkeeping rather than product behaviour, but it is an edit to a tracked doc that no ticket scoped.\", \"file\": \"docs/progress.md\" }\n  ],\n  \"mustFix\": [\n    \"Update README.md: add `list` to the documented command list and to the pinned usage line, and document the --json flag.\",\n    \"Assert the list output order without sorting, so criterion 53.1's 'in that order' is actually pinned by a test.\"\n  ],\n  \"skipped\": [\n    { \"tool\": \"gh\", \"reason\": \"Bash invocation of `gh issue view 56` was denied in this sandbox; spec verification relied on the criteria text supplied in the task rather than the live issue bodies.\" },\n    { \"tool\": \"lint\", \"reason\": \"No linter configured in the repo — no package.json, eslint config, or equivalent is tracked, so there is no lint gate to run.\" },\n    { \"tool\": \"typecheck\", \"reason\": \"Plain JavaScript project with no tsconfig.json or type annotations; no typecheck gate exists.\" },\n    { \"tool\": \"build\", \"reason\": \"README states 'no build step'; no build tooling is tracked in the repo.\" }\n  ]\n}\n```\n\nWaiting on both review axes. Meanwhile, current state:\n\n**→ Tests pass.** All 15 in `test/smoke.test.mjs`, including the 5 new ones. Verified by running the suite.\n\n**→ Found one real gap already.** `README.md` still documents the old usage line `usage: node src/cli.js <greet|cheer|farewell|motto|version|all>` and the six-command list. The branch changed both. No task in this epic owned README, and the previous epic explicitly had a \"wire CLI surface into README\" task, so this is an epic-level omission.\n\nStandards axis is back. Waiting on the Spec axis before I finalize.\n\nBoth axes are in. Here's what I found.\n\n**→ The epic works. All 15 tests pass, all 4 tickets landed.** I ran the suite and exercised every path by hand: `--json` wraps output correctly, `list` prints the six names identically standalone and via the dispatcher, unknown commands still exit 1 with the updated usage line.\n\n**→ One thing must be fixed before this ships: `README.md` is now factually wrong.** It's the documented CLI contract, and it still says `Commands: greet, cheer, farewell, motto, version, all.` plus the old usage line without `list`. The branch changed both. `--json` is undocumented there too. The previous epic had a dedicated \"wire CLI surface into README\" task; this one has no equivalent, so nobody owned it.\n\n**→ One test asserts less than it looks like.** The `list` test sorts both sides before comparing, so the \"in that order\" requirement from 53.1 is pinned nowhere. Reordering `src/list.js` keeps the suite green. Its own comment also claims it catches an unlisted command, but it would actually fail if `list` ever listed itself.\n\n**→ The `--json` capture is narrower than \"captured stdout\".** `src/cli.js` monkey-patches `console.log` only. A command using `process.stdout.write` would leak raw text and be missing from the JSON payload. No current command does this, so it's latent, not broken.\n\n**Also found:** `src/format.js:1` still says \"Nothing calls it yet; a later ticket wires it in\" — task 52 wired it. `docs/usage.md` gained no `list` section. `gh` was denied here, so I could not read the issues directly; I worked from the criteria as given.\n\n```json\n{\n  \"summary\": \"Epic #56 delivers what it promised: src/cli.js gains a --json flag that captures a command's console.log output and re-emits it through format(), the list command is added to the allowlist and implemented as a dependency-free src/list.js, docs/commands.md documents all seven commands, and test/smoke.test.mjs gains five tests. I ran the suite (15/15 pass) and exercised every CLI path by hand. Sixteen of seventeen criteria are met. What is wrong: README.md is the repo's documented CLI contract and is now false, still listing six commands and the pre-list usage line, with --json undocumented entirely; no ticket in this epic owned it, though the preceding epic had an explicit README-wiring task. Secondarily, the new list test sorts both sides before comparing, so the ordering that 53.1 makes explicit is unasserted, and the --json capture hooks console.log rather than stdout, so a future command using process.stdout.write would leak raw text alongside the JSON.\",\n  \"criteria\": [\n    { \"id\": \"52.1\", \"verdict\": \"met\", \"evidence\": \"src/cli.js --json branch; ran `node src/cli.js all --json` -> {\\\"output\\\":\\\"Hello from AFK lane 001\\\\nGoodbye...\\\"}\" },\n    { \"id\": \"52.2\", \"verdict\": \"met\", \"evidence\": \"src/cli.js `if (!json) require(...)` leaves the original path untouched; test 'src/cli.js greet without --json is unchanged'\" },\n    { \"id\": \"52.3\", \"verdict\": \"met\", \"evidence\": \"src/cli.js:3 `const { format } = require('./format.js');`\" },\n    { \"id\": \"52.4\", \"verdict\": \"met\", \"evidence\": \"src/cli.js COMMANDS array now ends `'all', 'list'`; ran `node src/cli.js list` successfully\" },\n    { \"id\": \"52.5\", \"verdict\": \"met\", \"evidence\": \"ran `node src/cli.js bogus --json` -> exit 1, stderr `usage: node src/cli.js <greet|cheer|farewell|motto|version|all|list>`\" },\n    { \"id\": \"53.1\", \"verdict\": \"met\", \"evidence\": \"src/list.js single console.log of ['greet','cheer','farewell','motto','version','all'].join('\\\\n'); output verified in that order\" },\n    { \"id\": \"53.2\", \"verdict\": \"met\", \"evidence\": \"ran `node src/list.js` -> exit 0, no stderr emitted\" },\n    { \"id\": \"53.3\", \"verdict\": \"met\", \"evidence\": \"src/list.js is 3 lines, contains no require() call at all\" },\n    { \"id\": \"53.4\", \"verdict\": \"met\", \"evidence\": \"ran `node src/list.js` and `node src/cli.js list`; stdout byte-identical\" },\n    { \"id\": \"54.1\", \"verdict\": \"met\", \"evidence\": \"docs/commands.md Markdown table, seven rows including `list`\" },\n    { \"id\": \"54.2\", \"verdict\": \"met\", \"evidence\": \"docs/commands.md rows cross-checked line-by-line against docs/usage.md and against live output of motto/version/all --json\" },\n    { \"id\": \"54.3\", \"verdict\": \"met\", \"evidence\": \"docs/commands.md `| list | node src/cli.js list | Prints the available command names, one per line. |`\" },\n    { \"id\": \"54.4\", \"verdict\": \"met\", \"evidence\": \"grep of docs/commands.md in the diff: no occurrence of `--json` or any sibling flag\" },\n    { \"id\": \"55.1\", \"verdict\": \"met\", \"evidence\": \"test 'src/cli.js greet --json wraps the plain output via format()' imports format from ../src/format.js and builds `expected` from its real return value\" },\n    { \"id\": \"55.2\", \"verdict\": \"met\", \"evidence\": \"test 'src/cli.js greet without --json is unchanged' compares dispatcher stdout to the direct script and asserts doesNotMatch(/^\\\\{/)\" },\n    { \"id\": \"55.3\", \"verdict\": \"partial\", \"evidence\": \"test 'src/cli.js list prints the command names one per line' asserts exit 0 and the name set, but calls [...names].sort() so per-line order is unpinned\" },\n    { \"id\": \"55.4\", \"verdict\": \"met\", \"evidence\": \"git diff of test/smoke.test.mjs shows only the USAGE constant updated (required by 52.4) plus 43 added lines; no existing test removed or restructured\" }\n  ],\n  \"findings\": [\n    { \"axis\": \"standards\", \"severity\": \"blocker\", \"title\": \"README.md still documents the pre-epic CLI contract\", \"detail\": \"README's `## CLI` section states `Commands: greet, cheer, farewell, motto, version, all.` and pins the exact usage line without `list`. Both are now false on this branch, and --json is undocumented there. README is the repo's stated CLI contract and the test file's own comment cites it as such.\", \"file\": \"README.md\" },\n    { \"axis\": \"spec\", \"severity\": \"major\", \"title\": \"The list test sorts, so the required output order is never asserted\", \"detail\": \"Criterion 53.1 requires the six names 'one per line, in that order'. The test compares [...names].sort() against a sorted constant, so reordering src/list.js leaves the suite green. Its comment also claims it catches an unlisted command, but it would instead fail if list ever listed itself.\", \"file\": \"test/smoke.test.mjs\" },\n    { \"axis\": \"spec\", \"severity\": \"minor\", \"title\": \"--json captures console.log, not stdout\", \"detail\": \"Criterion 52.1 says 'captured stdout output'. The implementation monkey-patches console.log only. A command using process.stdout.write or console.info would leak raw text to the terminal and be absent from the JSON payload, yielding mixed plain+JSON stdout. No current command does this, so it is latent.\", \"file\": \"src/cli.js\" },\n    { \"axis\": \"standards\", \"severity\": \"minor\", \"title\": \"docs/usage.md gained no entry for list\", \"detail\": \"usage.md's documented convention is one section per command describing what it prints. src/list.js was added with no section, so the two command references in docs/ now disagree on how many commands exist.\", \"file\": \"docs/usage.md\" },\n    { \"axis\": \"standards\", \"severity\": \"minor\", \"title\": \"Stale comment in src/format.js\", \"detail\": \"Line 1 still reads 'Nothing calls it yet; a later ticket wires it in.' Task 52 wired it into the dispatcher this epic.\", \"file\": \"src/format.js\" },\n    { \"axis\": \"standards\", \"severity\": \"minor\", \"title\": \"The command list is now duplicated in five places\", \"detail\": \"COMMANDS in src/cli.js, the hardcoded array in src/list.js, COMMANDS in test/smoke.test.mjs, docs/commands.md, and README. The duplication is deliberate per criterion 53.3, but the stale README is that decision's cost already being paid.\", \"file\": \"src/list.js\" },\n    { \"axis\": \"standards\", \"severity\": \"minor\", \"title\": \"Two unrelated `format` bindings one line apart\", \"detail\": \"`const { format } = require('./format.js')` sits directly above `const { format: renderLog } = require('node:util')`. The alias renderLog does not convey util.format's printf-substitution semantics, and every command in the tree logs a single string, so the util import buys little.\", \"file\": \"src/cli.js\" },\n    { \"axis\": \"spec\", \"severity\": \"minor\", \"title\": \"docs/progress.md rewritten though no criterion asks for it\", \"detail\": \"The epic header and task rows were replaced (45-49 became 52-55). Runner bookkeeping rather than product behaviour, but it is an edit to a tracked doc that no ticket scoped.\", \"file\": \"docs/progress.md\" }\n  ],\n  \"mustFix\": [\n    \"Update README.md: add `list` to the documented command list and to the pinned usage line, and document the --json flag.\",\n    \"Assert the list output order without sorting, so criterion 53.1's 'in that order' is actually pinned by a test.\"\n  ],\n  \"skipped\": [\n    { \"tool\": \"gh\", \"reason\": \"Bash invocation of `gh issue view 56` was denied in this sandbox; spec verification relied on the criteria text supplied in the task rather than the live issue bodies.\" },\n    { \"tool\": \"lint\", \"reason\": \"No linter configured in the repo — no package.json, eslint config, or equivalent is tracked, so there is no lint gate to run.\" },\n    { \"tool\": \"typecheck\", \"reason\": \"Plain JavaScript project with no tsconfig.json or type annotations; no typecheck gate exists.\" },\n    { \"tool\": \"build\", \"reason\": \"README states 'no build step'; no build tooling is tracked in the repo.\" }\n  ]\n}\n```",
+  "artifacts": {
+    "prompt": "/Users/developer/code/projects/gitproj-demo/.afk/verifier/56/prompt.md",
+    "stream": "/Users/developer/code/projects/gitproj-demo/.afk/verifier/56/stream.jsonl",
+    "review": "/Users/developer/code/projects/gitproj-demo/.afk/verifier/56/review.md",
+    "report": "/Users/developer/code/projects/gitproj-demo/.afk/verifier/56/report.json"
+  },
+  "counts": {
+    "criteria": {
+      "met": 16,
+      "partial": 1,
+      "unmet": 0,
+      "unknown": 0
+    },
+    "criteriaTotal": 17,
+    "findings": {
+      "blocker": 1,
+      "major": 1,
+      "minor": 6
+    },
+    "findingsTotal": 8,
+    "mustFix": 2
+  }
+}
