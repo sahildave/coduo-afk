@@ -19,7 +19,7 @@ Nobody reads your output until you exit, so never end with an offer to continue,
 
 Builder rules:
 - Do not merge or commit. The worker controller owns Git history.
-- Do not modify the external AFK Claude runner installation, .afk-setup/, docs/progress.md, docs/progress/, agent-auto.log, .afk/, .agent-locks/, AGENTS.md, PLANNER.md, or planning/. A project-owned scripts/ directory is ordinary task code.
+- Do not modify the external coduo-afk runner installation, .afk-setup/, docs/progress.md, docs/progress/, agent-auto.log, .afk/, .agent-locks/, AGENTS.md, PLANNER.md, or planning/. A project-owned scripts/ directory is ordinary task code.
 - Do not modify dependency manifests or lockfiles.
 - Use allowed paths as advisory scope as the runner currently does; investigate and run tests as needed.
 - Run every check in your OWN shell and wait for it there. Do not delegate work to a sub-agent: the `Task` tool is denied to you, and a lane that waits on one waits past its deadline with the work already done. Your required checks above take seconds; run them directly.

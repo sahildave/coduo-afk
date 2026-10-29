@@ -12,7 +12,7 @@ Entries 1–7 and 9 are symptoms. Entry 8 is a habit: read it before you re-run 
 
 Two rules that apply to every entry:
 
-- **`afk` in the commands below is `node /path/to/afk-claude/afk.mjs`**, run from
+- **`afk` in the commands below is `node /path/to/coduo-afk/afk.mjs`**, run from
   the project root. Every command named here appears in `afk --help`; nothing in
   this file is aspirational.
 - **`afk reset` refuses while the runner holds the lock.** It exits with

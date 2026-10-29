@@ -1,6 +1,6 @@
 # FAQ — the first run
 
-Answers an operator actually needs the first time they point AFK Claude at an
+Answers an operator actually needs the first time they point coduo-afk at an
 epic. `docs/findings.md` holds the same material organised by when it was
 discovered; this file is organised by what someone wants to know.
 Every answer names the file or command that settles it. Where the honest answer

@@ -61,7 +61,7 @@ Two things, and they land in different places.
    exist until the issues do.
 
 The runner is **not** part of the deliverable and does not live in the project: it is installed once
-elsewhere and invoked as `node /path/to/afk-claude/afk.mjs <command>` from the project root. No
+elsewhere and invoked as `node /path/to/coduo-afk/afk.mjs <command>` from the project root. No
 `package.json` is required, and there are no `npm run agent:*` scripts. You write planning artifacts
 only — never application source, never anything under the runner's installation.
 
@@ -247,7 +247,7 @@ Never-writable by an agent (the runner reverts project-local changes even if a p
 `.agent-locks/**`, `.afk/**`, `afk.config.json`, `docs/progress.md`, `docs/progress/**`, `agent-auto.log`, `planning/**`,
 `AGENTS.md`, `PLANNER.md`, dependency manifests, and lockfiles. `planning/**` stays protected even
 though the runner keeps no task files there any more — it costs nothing, and a project may still hold
-planning documents a builder has no business rewriting. The external AFK Claude installation is also
+planning documents a builder has no business rewriting. The external coduo-afk installation is also
 off-limits. A project's own `scripts/**` is normal task code and may be listed in `allowedPaths`.
 
 Builder-writable bookkeeping (do **not** list it in `allowedPaths`): `.afk-runs/**` — since #106 only a
@@ -312,7 +312,7 @@ active builders and integration work are empty and no automatic task remains —
 work as it goes. The human then releases it deliberately:
 
 ```bash
-node /path/to/afk-claude/afk.mjs epic <epic-issue> --task=<issue-number>
+node /path/to/coduo-afk/afk.mjs epic <epic-issue> --task=<issue-number>
 ```
 
 A release is a restart with one task admitted, so it re-fetches and re-validates the epic first: a
@@ -802,14 +802,14 @@ plan in ten minutes before committing a night of agent time to it.
     failure, inspect `.afk/state.json`, `.afk/runs/`, the retained task worktree/branch, and
     `runs/<id>/`; then `afk reset <id>` and rerun. Watch it with `afk dashboard` (port 4041, started
     automatically by `auto`) or `afk stats`. All commands are
-    `node /path/to/afk-claude/afk.mjs <command>`, run from the project root.
+    `node /path/to/coduo-afk/afk.mjs <command>`, run from the project root.
 
 ---
 
 # PART 7 — `README.md`
 
 State: this is a planning package, not an app; extract at the repo root; the runner is installed
-outside the project and invoked as `node /path/to/afk-claude/afk.mjs <command>` from the project root,
+outside the project and invoked as `node /path/to/coduo-afk/afk.mjs <command>` from the project root,
 with no `package.json` required; it commits per task; the task specs are the GitHub epic's child
 issues, not files in this repo; tasks are budgeted to one agent timeout window each; standard tasks
 are headless; builds, deploys, and QA are gated (`gate: before` on the epic); a manual pass on

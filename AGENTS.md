@@ -1,6 +1,6 @@
-# AGENTS.md — AFK Claude runner
+# AGENTS.md — coduo-afk runner
 
-AFK Claude is a package-free Node.js task runner. It schedules DAG tasks into
+coduo-afk is a package-free Node.js task runner. It schedules DAG tasks into
 isolated Git worktrees, runs a fresh builder per task, verifies and commits task
 branches, serializes fresh-agent merges into `main`, verifies again, and marks
 tasks passed. See `README.md` for usage and `docs/epic-schema.md` for where the

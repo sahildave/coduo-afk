@@ -483,7 +483,7 @@ Claude run does. Note that `.afk/state.json` does **not** record which executabl
 a restart with the other one is not refused: passed lanes are not re-run, and everything still
 pending is dispatched to whichever CLI the executable you typed names. Type the same one.
 
-On restart, AFK Claude reconciles stale workers and worktrees, restores interrupted integrations to
+On restart, coduo-afk reconciles stale workers and worktrees, restores interrupted integrations to
 their recorded base SHA, queues verified task branches again, and preserves unverified changes as
 patches before rebuilding. Integration failure never deletes the completed task branch.
 
