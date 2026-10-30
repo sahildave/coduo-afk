@@ -1237,6 +1237,35 @@ test("#273: an exited run parked at a gate is listed with that gate, on listRuns
   assert.deepEqual(doc.gates, [{ project: "afk-claude", epic: "273", task: "275" }, { project: "before", epic: "290", task: "292" }]);
 });
 
+// The store keeps every chief of staff run, so an older run's adopted epic
+// parked at a gate is still listed. The snapshot is the open run's: only its
+// `epics`, its `adopted` roots and the epics its plan names.
+test("the snapshot holds only the open chief of staff run's epics, adopted roots and planned epics", async () => {
+  const m = machine();
+  const gated = (name, epic) => checkout(m.home, name, {
+    dag: { epic, branch: `feat/${epic}`, tasks: [{ id: "2" }] },
+    tasks: { 2: { lifecycle: "awaiting_acceptance" } },
+    dashboard: null,
+  });
+  const old = gated("old-repo", "1326");
+  const named = gated("mac-directory", "1");
+  const adopted = gated("adopted-repo", "55");
+  const { appendEvent, createRun } = await import("./cos/store.mjs");
+  const before = createRun({ root: m.env.AFK_COS_ROOT, mode: "night", epics: [], adopted: [{ epic: "1326", root: old }] });
+  appendEvent(before.dir, "stop", {});
+  const open = createRun({ root: m.env.AFK_COS_ROOT, mode: "day", epics: ["1"], adopted: [{ epic: "55", root: adopted }] });
+  const at = (min) => new Date(Date.now() + min * 60_000).toISOString();
+  appendEvent(open.dir, "checkin", { runs: [{ root: named }] });
+  appendEvent(open.dir, "plan", { epics: [{ epic: "8", project: "mac-directory", label: "queued", launch: at(60), phases: [{ kind: "build", start: at(60), minutes: 60 }] }] });
+  const out = join(m.home, "snapshot.json");
+  const r = spawnSync(process.execPath, [afk, "hub", "snapshot", "--out", out], { env: snapshotEnv(m), encoding: "utf8" });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const doc = JSON.parse(readFileSync(out, "utf8"));
+  assert.deepEqual(doc.runs.map((run) => run.id).sort(), ["adopted-repo#55", "mac-directory#1"]);
+  assert.deepEqual(doc.gates.map((gate) => gate.epic).sort(), ["1", "55"]);
+  assert.deepEqual(doc.unlaunched.map((row) => [row.project, row.epic]), [["mac-directory", "8"]]);
+});
+
 test("#274: an exited run closed under 24 h ago reaches the snapshot with closedAt; one closed 25 h ago does not", async () => {
   const m = machine();
   const hoursAgo = (h) => new Date(Date.now() - h * 3_600_000).toISOString();
