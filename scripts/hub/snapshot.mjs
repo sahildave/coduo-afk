@@ -20,13 +20,13 @@
 // Read only, and it never talks to claude.ai: the chief of staff passes the
 // file to `ArtifactData set` on `snapshots/<doc_id>`.
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { phaseOf } from "../dashboard-data.mjs";
 import { lanesReport } from "../lanes.mjs";
 import { collectUsage, loadUsageCache, monthStart, saveUsageCache, usageReport } from "../usage.mjs";
 import { nowMs } from "../cos/store.mjs";
 import { hubView } from "./page.mjs";
-import { planChart, readActuals } from "./plan.mjs";
+import { latestPlan, planChart, readActuals } from "./plan.mjs";
 import { isLive, openGates } from "./runs.mjs";
 
 export const NIGHT_LOG_KEPT = 50;
@@ -166,9 +166,26 @@ export const laneCapOf = (runs) => {
   return caps.length && caps.every((cap) => Number.isInteger(cap)) ? caps.reduce((a, b) => a + b, 0) : null;
 };
 
+/**
+ * The runs the open chief of staff run covers: its `epics`, its `adopted`
+ * roots and the epics its plan names (`afk cos plan`). `listRuns` reads every
+ * store run, so an older night's parked epic is still listed. With no run
+ * open, every run is kept.
+ */
+export const scopedRuns = (runs, cos) => {
+  if (!cos) return runs;
+  const epics = new Set((cos.meta?.epics ?? []).map(String));
+  const roots = new Set((cos.meta?.adopted ?? []).map((entry) => entry?.root).filter(Boolean).map((root) => resolve(root)));
+  const plan = latestPlan(cos.events ?? [])?.epics ?? [];
+  return runs.filter((run) => epics.has(String(run.epic))
+    || (run.root && roots.has(resolve(run.root)))
+    || plan.some((row) => String(row.epic) === String(run.epic) && (!row.project || row.project === run.project)));
+};
+
 /** The whole document, before the size check. */
 export const buildSnapshot = async (env = process.env) => {
-  const view = await hubView(env);
+  const hub = await hubView(env);
+  const view = { ...hub, runs: scopedRuns(hub.runs, hub.cos) };
   const atMs = nowMs(env);
   const at = new Date(atMs).toISOString();
   const history = view.cos ?? (view.closedRun ? { id: view.closedRun.id } : null);
