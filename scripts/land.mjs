@@ -4,7 +4,8 @@
 // checked verb (with one allow line naming it) replaces a `gh pr merge` the
 // auto-mode classifier refuses:
 //
-//   ci-green         every check on the PR concluded success, skipped or neutral
+//   ci-green         every check on the PR concluded success, skipped or neutral;
+//                    zero checks pass only with `merge.ci: none` in config
 //   not-a-base-push  the PR's head is not its own base branch
 //   owner-approval   the repository owner approved the PR, or commented an
 //                    explicit approval with no agent's mark, and no review
@@ -42,7 +43,7 @@ const APPROVAL = /^\s*(?:\/land|\/approve|lgtm|approved?\b|ship it|land it)/im;
 
 const check = (name, status, evidence) => ({ name, status, evidence });
 
-const ciGreen = ({ gh, repo, number }) => {
+const ciGreen = ({ gh, repo, number, config }) => {
   const name = "ci-green";
   const result = gh(`gh pr checks ${number} --repo ${shellQuote(repo)} --json name,state`);
   let checks = null;
@@ -53,7 +54,12 @@ const ciGreen = ({ gh, repo, number }) => {
     if (/no checks reported/i.test(`${result.stderr ?? ""}${result.stdout ?? ""}`)) checks = [];
     else return check(name, "fail", `gh could not list the checks on PR #${number}: ${String(result.stderr ?? "").trim() || "no output"}`);
   }
-  if (!checks.length) return check(name, "fail", `PR #${number} has zero checks, so nothing says it is green`);
+  // Zero checks pass only under `merge.ci: none`, the same key `afk merge` reads.
+  if (!checks.length) {
+    return config?.merge?.ci === "none"
+      ? check(name, "pass", "zero checks, `merge.ci: none` in .afk-setup/config.yaml")
+      : check(name, "fail", `PR #${number} has zero checks, so nothing says it is green (set \`merge.ci: none\` if this project has no CI)`);
+  }
   const listed = checks.map((row) => `${row.name}: ${String(row.state).toLowerCase()}`).join(", ");
   const states = checks.map((row) => String(row.state ?? "").toUpperCase());
   if (states.some((state) => !PASS_STATES.has(state) && !WAIT_STATES.has(state))) return check(name, "fail", listed);
@@ -122,15 +128,16 @@ export const cli = (args = process.argv.slice(2), { root = process.cwd(), gh = r
   }
   // Fail closed: a config that does not load could hide a misspelt delegation
   // or a missing one, so refuse rather than guess either way.
-  let delegated = false;
+  let config = {};
   if (existsSync(configPath(root))) {
     try {
-      delegated = loadConfig(root).land?.ownerApproval === "delegated";
+      config = loadConfig(root);
     } catch (error) {
       say(`LAND: ${error.message}`);
       return 1;
     }
   }
+  const delegated = config.land?.ownerApproval === "delegated";
   const exec = (command) => gh(command, { cwd: root });
   const view = exec(`gh pr view ${number} --repo ${shellQuote(repo)} --json number,state,isDraft,title,body,baseRefName,headRefName,headRefOid,isCrossRepository,author,reviews,comments`);
   let pr = null;
@@ -148,7 +155,7 @@ export const cli = (args = process.argv.slice(2), { root = process.cwd(), gh = r
   if (pr.isDraft) { say(`LAND: #${number} is a draft; mark it ready first.`); return 1; }
 
   const owner = repo.split("/")[0];
-  const checks = [ciGreen({ gh: exec, repo, number }), notABasePush(pr), ownerApproval(pr, owner, { delegated })];
+  const checks = [ciGreen({ gh: exec, repo, number, config }), notABasePush(pr), ownerApproval(pr, owner, { delegated })];
   for (const result of checks) say(`  ${renderGuardLine(result)}`);
   if (checks.some((result) => result.status !== "pass")) {
     say(`LAND: not merged; ${checks.filter((result) => result.status !== "pass").map((result) => result.name).join(", ")} did not pass.`);

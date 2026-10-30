@@ -227,3 +227,29 @@ test("an unknown land.ownerApproval value is refused, and nothing merges", (t) =
   assert.match(result.stdout, /ownerApproval/);
   assert.equal(merged(calls()), false);
 });
+
+// `merge.ci: none` (the key `afk merge` reads) also covers `afk land`.
+test("with merge.ci: none, a PR with zero checks passes ci-green naming the config; a red or pending check still blocks", (t) => {
+  const withConfig = (opts) => {
+    const m = machine(t, opts);
+    mkdirSync(join(m.dir, ".afk-setup"));
+    writeFileSync(join(m.dir, ".afk-setup", "config.yaml"), "merge:\n  ci: none\n");
+    return m;
+  };
+  const none = withConfig({ checks: [] });
+  const ok = none.land("42", "--repo=acme/app");
+  assert.equal(ok.status, 0, ok.stdout + ok.stderr);
+  assert.match(ok.stdout, /PASS ci-green: .*zero checks.*`merge\.ci: none` in \.afk-setup\/config\.yaml/);
+  assert.match(none.calls(), /gh pr merge 42/);
+
+  for (const [checks, exit, expected] of [
+    [[{ name: "test", state: "FAILURE" }], 1, /FAIL ci-green: test: failure/],
+    [[{ name: "test", state: "PENDING" }], 8, /WAIT ci-green: test: pending/],
+  ]) {
+    const m = withConfig({ checks, checksExit: exit });
+    const result = m.land("42", "--repo=acme/app");
+    assert.equal(result.status, 1, result.stdout);
+    assert.match(result.stdout, expected);
+    assert.equal(merged(m.calls()), false);
+  }
+});
