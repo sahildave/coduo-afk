@@ -8,7 +8,11 @@
 //   not-a-base-push  the PR's head is not its own base branch
 //   owner-approval   the repository owner approved the PR, or commented an
 //                    explicit approval with no agent's mark, and no review
-//                    since takes it back
+//                    since takes it back. With `land: { ownerApproval:
+//                    delegated }` in .afk-setup/config.yaml the owner delegated
+//                    non-epic merges: the approval is not required (an owner
+//                    request for changes still fails it), and after the merge
+//                    the PR gets a comment recording the delegation.
 //
 // An epic PR (it carries `prMarker`) is refused: `afk merge` owns those, with
 // the full guardrails. `--dry-run` prints the checks and the merge it would
@@ -17,7 +21,8 @@
 //
 // Fail direction: closed. A `gh` call that fails, or an answer that does not
 // parse, is a failed check.
-import { currentRepo, isMainModule, run, shellQuote } from "./lib.mjs";
+import { existsSync } from "node:fs";
+import { configPath, currentRepo, isMainModule, loadConfig, run, shellQuote } from "./lib.mjs";
 import { pickMergeMethod, renderGuardLine } from "./merge.mjs";
 
 const PASS_STATES = new Set(["SUCCESS", "SKIPPED", "NEUTRAL"]);
@@ -70,7 +75,7 @@ const loginOf = (entry) => String(entry?.author?.login ?? "unknown");
  * owner's latest review requests changes, or when any review that is not an
  * approval came after the latest approval.
  */
-const ownerApproval = (pr, owner) => {
+const ownerApproval = (pr, owner, { delegated = false } = {}) => {
   const name = "owner-approval";
   const byOwner = (entry) => entry?.authorAssociation === "OWNER" || loginOf(entry).toLowerCase() === owner.toLowerCase();
   const agent = (entry) => AGENT_MARK.test(String(entry?.body ?? ""));
@@ -78,6 +83,7 @@ const ownerApproval = (pr, owner) => {
   const ownerReviews = reviews.filter(byOwner).sort((a, b) => at(a) - at(b));
   const latest = ownerReviews.at(-1);
   if (latest?.state === "CHANGES_REQUESTED") return check(name, "fail", `${loginOf(latest)} requested changes${latest.submittedAt ? ` at ${latest.submittedAt}` : ""}`);
+  if (delegated) return check(name, "pass", "delegated: land.ownerApproval is `delegated` in .afk-setup/config.yaml");
   const approvals = [
     ...ownerReviews.filter((review) => review.state === "APPROVED" && !agent(review))
       .map((review) => ({ entry: review, how: "approved the PR" })),
@@ -114,6 +120,17 @@ export const cli = (args = process.argv.slice(2), { root = process.cwd(), gh = r
     say("LAND: cannot tell which repository this is. Pass --repo=<owner/name>.");
     return 1;
   }
+  // Fail closed: a config that does not load could hide a misspelt delegation
+  // or a missing one, so refuse rather than guess either way.
+  let delegated = false;
+  if (existsSync(configPath(root))) {
+    try {
+      delegated = loadConfig(root).land?.ownerApproval === "delegated";
+    } catch (error) {
+      say(`LAND: ${error.message}`);
+      return 1;
+    }
+  }
   const exec = (command) => gh(command, { cwd: root });
   const view = exec(`gh pr view ${number} --repo ${shellQuote(repo)} --json number,state,isDraft,title,body,baseRefName,headRefName,headRefOid,isCrossRepository,author,reviews,comments`);
   let pr = null;
@@ -131,7 +148,7 @@ export const cli = (args = process.argv.slice(2), { root = process.cwd(), gh = r
   if (pr.isDraft) { say(`LAND: #${number} is a draft; mark it ready first.`); return 1; }
 
   const owner = repo.split("/")[0];
-  const checks = [ciGreen({ gh: exec, repo, number }), notABasePush(pr), ownerApproval(pr, owner)];
+  const checks = [ciGreen({ gh: exec, repo, number }), notABasePush(pr), ownerApproval(pr, owner, { delegated })];
   for (const result of checks) say(`  ${renderGuardLine(result)}`);
   if (checks.some((result) => result.status !== "pass")) {
     say(`LAND: not merged; ${checks.filter((result) => result.status !== "pass").map((result) => result.name).join(", ")} did not pass.`);
@@ -142,6 +159,7 @@ export const cli = (args = process.argv.slice(2), { root = process.cwd(), gh = r
   if (dryRun) {
     say(`LAND: dry run, nothing changed. Method ${evidence}.`);
     say(`  would run: ${command}`);
+    if (delegated) say("  then comment on the PR that it landed under the owner's delegation");
     return 0;
   }
   const merged = exec(command);
@@ -150,6 +168,16 @@ export const cli = (args = process.argv.slice(2), { root = process.cwd(), gh = r
     return 1;
   }
   say(`LAND: merged #${number} into ${pr.baseRefName} (${method}, head ${String(pr.headRefOid).slice(0, 12)}).`);
+  if (delegated) {
+    const note = [
+      "<!-- afk:land-delegated -->",
+      `Landed by the chief of staff under the owner's delegation (\`land.ownerApproval: delegated\` in \`.afk-setup/config.yaml\`), with \`afk land\` at head ${pr.headRefOid}:`,
+      "",
+      ...checks.map((result) => `- ${renderGuardLine(result)}`),
+    ].join("\n");
+    const posted = exec(`gh pr comment ${number} --repo ${shellQuote(repo)} --body ${shellQuote(note)}`);
+    if (posted.status !== 0) say(`LAND: merged, but the delegation comment did not post: ${String(posted.stderr || posted.stdout || "no output").trim().split("\n")[0]}`);
+  }
   return 0;
 };
 

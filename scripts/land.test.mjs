@@ -35,6 +35,7 @@ case "$1 $2" in
   "pr view") cat "${dir}/pr.json" ;;
   "pr checks") cat "${dir}/checks.json"; exit ${checksExit} ;;
   "pr merge") echo "merged" ;;
+  "pr comment") echo "commented" ;;
   "api graphql") echo '{"data":{"repository":{"pullRequests":{"nodes":[]}}}}' ;;
   *) echo "unscripted: $*" >&2; exit 1 ;;
 esac
@@ -45,7 +46,7 @@ esac
     env: { ...process.env, PATH: `${join(dir, "bin")}:${process.env.PATH}` },
   });
   const calls = () => (existsSync(join(dir, "calls.log")) ? readFileSync(join(dir, "calls.log"), "utf8") : "");
-  return { land, calls };
+  return { land, calls, dir };
 };
 
 const merged = (calls) => /gh pr merge/.test(calls);
@@ -180,4 +181,49 @@ test("S8: the evidence names the login that matched, not the repository's owner 
   const result = land("42", "--repo=acme/app");
   assert.match(result.stdout, /PASS owner-approval: owner /);
   assert.doesNotMatch(result.stdout, /owner-approval: acme /);
+});
+
+// ---------------------------------------------------------------------------
+// Delegated landing: `land: { ownerApproval: delegated }` in the repo's config
+// ---------------------------------------------------------------------------
+
+test("with land.ownerApproval: delegated, a PR with no owner approval lands and the PR gets a comment saying why", (t) => {
+  const { land, calls, dir } = machine(t, { pr: { ...PR, comments: [] } });
+  mkdirSync(join(dir, ".afk-setup"));
+  writeFileSync(join(dir, ".afk-setup", "config.yaml"), "land:\n  ownerApproval: delegated\n");
+  const result = land("42", "--repo=acme/app");
+  assert.equal(result.status, 0, result.stdout + result.stderr);
+  assert.match(result.stdout, /PASS owner-approval: delegated/);
+  assert.match(calls(), /gh pr merge 42/);
+  assert.match(calls(), /gh pr comment 42 --repo acme\/app --body/);
+  assert.match(calls(), /under the owner's delegation/);
+});
+
+test("with land.ownerApproval: delegated, the owner's request for changes still blocks; with no config the owner's approval is still required", (t) => {
+  const changes = { ...PR, comments: [], reviews: [owner({ state: "CHANGES_REQUESTED", body: "no", submittedAt: "2026-10-13T11:00:00Z" })] };
+  const blocked = machine(t, { pr: changes });
+  mkdirSync(join(blocked.dir, ".afk-setup"));
+  writeFileSync(join(blocked.dir, ".afk-setup", "config.yaml"), "land:\n  ownerApproval: delegated\n");
+  const first = blocked.land("42", "--repo=acme/app");
+  assert.equal(first.status, 1, first.stdout);
+  assert.match(first.stdout, /FAIL owner-approval: .*requested changes/);
+  assert.equal(merged(blocked.calls()), false);
+
+  const plain = machine(t, { pr: { ...PR, comments: [] } });
+  mkdirSync(join(plain.dir, ".afk-setup"));
+  writeFileSync(join(plain.dir, ".afk-setup", "config.yaml"), "land:\n  ownerApproval: required\n");
+  const second = plain.land("42", "--repo=acme/app");
+  assert.equal(second.status, 1, second.stdout);
+  assert.match(second.stdout, /FAIL owner-approval/);
+  assert.equal(merged(plain.calls()), false);
+});
+
+test("an unknown land.ownerApproval value is refused, and nothing merges", (t) => {
+  const { land, calls, dir } = machine(t, { pr: { ...PR, comments: [] } });
+  mkdirSync(join(dir, ".afk-setup"));
+  writeFileSync(join(dir, ".afk-setup", "config.yaml"), "land:\n  ownerApproval: yes-please\n");
+  const result = land("42", "--repo=acme/app");
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stdout, /ownerApproval/);
+  assert.equal(merged(calls()), false);
 });

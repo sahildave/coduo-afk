@@ -453,7 +453,30 @@ export const loadConfig = (projectRoot = root) => {
   });
   const config = blank ? {} : parseYamlSubset(text) ?? {};
   validateMergeConfig(config);
+  validateLandConfig(config);
   return config;
+};
+
+/**
+ * The `land:` block: what `afk land` (scripts/land.mjs) reads. One key.
+ *
+ *   ownerApproval   `required` (default): the owner's own approval on the PR.
+ *                   `delegated`: the owner delegated non-epic merges for this
+ *                   repo, so `afk land` skips that check (an owner request for
+ *                   changes still blocks) and records the delegation on the PR.
+ *
+ * @throws {Error} naming the key and what was wrong with it
+ */
+export const validateLandConfig = (config) => {
+  if (!Object.hasOwn(config ?? {}, "land")) return;
+  const land = config.land;
+  const where = ".afk-setup/config.yaml";
+  if (land === null || typeof land !== "object" || Array.isArray(land) || Object.keys(land).some((key) => key !== "ownerApproval")) {
+    throw new Error(`${where}: \`land:\` must be a mapping with one key, ownerApproval.`);
+  }
+  if (land.ownerApproval !== undefined && !["required", "delegated"].includes(land.ownerApproval)) {
+    throw new Error(`${where}: \`land.ownerApproval\` must be \`required\` or \`delegated\`, got ${JSON.stringify(land.ownerApproval)}.`);
+  }
 };
 
 /**
