@@ -669,7 +669,12 @@ export const HELP_SECTIONS = {
                                --finding= are accepted too.`,
   land: `  land <pr> [--repo=] [--dry-run]
                                Merge a non-epic PR once CI is green, it is not
-                               a base-branch push, and the owner approved it.`,
+                               a base-branch push, and the owner approved it.
+                               With \`land: { ownerApproval: delegated }\` in
+                               .afk-setup/config.yaml the approval is not
+                               needed (an owner request for changes still
+                               blocks), and the PR gets a comment recording
+                               the delegation.`,
   hub: `  hub [install|uninstall|queue <target>|ack <target> <id>...] [--port=]
                                Serve the machine-wide hub on 127.0.0.1:4099,
                                install or remove its launchd agent, or read and

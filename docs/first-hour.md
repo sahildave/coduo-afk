@@ -188,6 +188,18 @@ parser the epic's `afk:` block uses, so the runner stays dependency-free.
     ci: required
     healthProbe: curl -fsS https://example.com/health
   ```
+- **`land`** (optional) is what `afk land <pr>` reads before it merges a
+  non-epic PR. One key, `ownerApproval`: `required` (the default) needs the
+  owner's own approval on the PR, an approving review or a comment line
+  starting `/land`, `lgtm` or `ship it`. `delegated` means the owner delegated
+  non-epic merges for this repo: `afk land` skips that check (an owner request
+  for changes still blocks; CI and the base-branch check still run) and, after
+  the merge, comments on the PR that it landed under the owner's delegation.
+
+  ```yaml
+  land:
+    ownerApproval: delegated
+  ```
 - **`preflight`** (optional) declares the host checks only this project knows
   about. Each runs before any lane is spawned, and also on demand with
   `afk preflight`; `afk validate` checks the block's shape and runs none of

@@ -2,6 +2,13 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **`afk land` can land under the owner's delegation (2026-10-30).** New config
+  key `land.ownerApproval`: `required` (default, unchanged) or `delegated`.
+  With `delegated`, `afk land` skips the owner-approval requirement (an owner
+  request for changes still fails it; CI and the base-branch check are
+  unchanged) and posts a `<!-- afk:land-delegated -->` comment on the PR after
+  the merge. Any other key under `land:` or value is refused.
+
 - **The tier router sends each ticket to Opus, or to Sonnet/Codex by quota (#294, 2026-10-26).**
   Before the first lane, `afk epic` / `afk auto` asks Jev (TypeSafe System
   One) seven atomic questions per executable ticket, one request each, 20 s
