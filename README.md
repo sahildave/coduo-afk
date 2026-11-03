@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/banner.png" alt="coduo skills"></p>
+
 # coduo-afk
 
 coduo-afk runs a GitHub epic while you are away from the keyboard. You write the epic and its child
@@ -492,3 +494,24 @@ patches before rebuilding. Integration failure never deletes the completed task 
 [docs/epic-schema.md](docs/epic-schema.md) defines where the task DAG comes from and how it splits
 from `.afk-setup/config.yaml`. [PLANNER.md](PLANNER.md) is the agent-facing planning prompt: task sizing,
 scope, checks, graph shape, and what to emit onto the epic and its child issues.
+
+---
+
+<p align="center">
+  <a href="https://www.coduo.co">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="/assets/apps/coduo-dark.svg">
+      <img src="/assets/apps/coduo-light.svg" height="56" alt="coduo">
+    </picture>
+  </a>
+  <br>
+  creating software<br>with intention
+</p>
+
+<p align="center">
+  <a href="https://www.coduo.co"><img src="/assets/apps/skilltopia.png" width="48" alt="skilltopia" title="skilltopia"></a>&nbsp;&nbsp;
+  <a href="https://gitsu.app"><img src="/assets/apps/gitsu.png" width="48" alt="gitsu" title="gitsu"></a>&nbsp;&nbsp;
+  <a href="https://gitback.us"><img src="/assets/apps/gitback.png" width="48" alt="gitback" title="gitback"></a>&nbsp;&nbsp;
+  <a href="https://shareling.app"><img src="/assets/apps/shareling.png" width="48" alt="shareling" title="shareling"></a>&nbsp;&nbsp;
+  <a href="https://www.coduo.co"><img src="/assets/apps/macappspace.png" width="48" alt="macapp.space" title="macapp.space"></a>
+</p>
