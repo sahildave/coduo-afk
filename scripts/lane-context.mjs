@@ -104,8 +104,6 @@ const looseSkillTexts = (projectRoot, home) => {
   return texts;
 };
 
-const escape = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-
 /**
  * Which loose skills each text points at: `/name`, `` `name` ``,
  * `` `name <args>` `` (a command line such as `agent-device screenshot`) or
@@ -117,11 +115,17 @@ const escape = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * plugin skills (`plugin:skill`), whose references count the same way.
  */
 export const skillReferences = (texts, names = [...texts.keys()]) =>
-  Object.fromEntries([...texts.keys()].map((name) => [name, names.filter((other) => other !== name
-    && referencePattern(other).test(texts.get(name)))]));
+  Object.fromEntries([...texts.keys()].map((name) => {
+    const found = referencedNames(texts.get(name));
+    return [name, names.filter((other) => other !== name && found.has(other))];
+  }));
 
-const referencePattern = (name) =>
-  new RegExp(`(?:\`/?${escape(name)}(?:\\s[^\`\\n]*)?\`|(?<![\\w/.-])/${escape(name)}(?![\\w-])|Skill tool with "${escape(name)}")`);
+// One pass over the text for every name it could reference, not one regex per
+// name per text: with some 260 names and 400 texts that took 86 s per command.
+const REFERENCE = /`\/?([^`\s]+)(?:\s[^`\n]*)?`|(?<![\w/.-])\/([\w.-]*[\w-])|Skill tool with "([^"\n]+)"/g;
+const referencedNames = (text) => new Set(
+  [...String(text).matchAll(REFERENCE)].map((match) => match[1] ?? match[2] ?? match[3]),
+);
 
 /**
  * The files a plugin could be keeping `<plugin>:<skill>` in, in the order worth
@@ -274,12 +278,12 @@ export const hostInventory = (projectRoot, home = homedir()) => {
   const loose = looseSkillTexts(projectRoot, home);
   const plugins = [...new Set([...enabledPluginKeys(projectRoot, home), ...syncedPluginKeys(home)])].sort();
   const looseSkills = [...loose.keys()].sort();
-  const instructions = [...repoInstructionFiles(projectRoot).values()].join("\n");
+  const named = referencedNames([...repoInstructionFiles(projectRoot).values()].join("\n"));
   return {
     plugins,
     looseSkills,
     references: skillReferences(new Map([...loose, ...pluginSkillTexts(plugins, home)]), looseSkills),
-    instructionSkills: looseSkills.filter((name) => referencePattern(name).test(instructions)),
+    instructionSkills: looseSkills.filter((name) => named.has(name)),
   };
 };
 
