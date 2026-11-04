@@ -323,10 +323,12 @@ computation.
 **`--unattended`**, on `validate`, `epic` and `start`, turns "every stop has an
 answer" into a refusal:
 
-- `afk validate <n> --unattended` runs the plan review as `--plan-review` does,
-  and exits 0 only when the deterministic tier passed, the plan review passed
-  and no stop is unanswered. Its last line is `UNATTENDED: ready. N stops, all
-  answered.` or `UNATTENDED: refused: <reason>. Nothing was created.`
+- `afk validate <n> --unattended` exits 0 only when the deterministic tier
+  passed and no stop is unanswered. It spends no tokens, so a stop only the plan
+  review can raise (`needs_human`) is not in it. Add `--plan-review` to run the
+  review too and refuse on its verdict. Its last line is `UNATTENDED: ready. N
+  stops, all answered.`, with `The plan review runs at \`afk epic\`.` when no
+  review ran, or `UNATTENDED: refused: <reason>. Nothing was created.`
 - `afk epic <n> --unattended` runs the same check after the plan review and
   before the branch is created, and refuses with `No branch, worktree or pull
   request was created.` `afk start` forwards the flag to `afk epic`.

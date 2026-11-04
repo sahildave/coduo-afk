@@ -136,9 +136,9 @@ export const HELP_SECTIONS = {
                                        deterministic, offline and free.
                                        \`afk epic\` always runs it.
                                  --unattended         refuse unless nobody will
-                                       be needed: runs the plan review, and
-                                       exits 0 only when it passes and every
-                                       stop in the stop forecast has an answer
+                                       be needed: exits 0 only when every stop
+                                       in the stop forecast has an answer. With
+                                       --plan-review, the review must pass too
                                        in the afk: block's \`stops:\`. Last
                                        line: \`UNATTENDED: ready\` or
                                        \`UNATTENDED: refused: <reason>\`.`,

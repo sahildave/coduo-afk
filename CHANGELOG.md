@@ -8,6 +8,12 @@
   `GET /lanes/opening[?days=N]`. It covers every project, so the project filter
   does not apply to it. No config or state change.
 
+- **`afk validate --unattended` no longer runs the plan review (2026-11-04).**
+  `afk epic` reviews at launch and refuses there, so an unattended launch paid
+  for two reviews. It now checks stops only and says the review runs at
+  `afk epic`, which means a `needs_human` stop surfaces at launch, not here. Add
+  `--plan-review` to keep the old behaviour.
+
 - **The lane skill trim stops at two references (2026-11-04).** The trim followed
   skill references without limit, so gitback's instruction files kept 47 skills
   for a role that lists none, and 130 of 131 builders in the last 14 days listed
