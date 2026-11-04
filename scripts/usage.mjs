@@ -307,7 +307,7 @@ export const afkSessionFiles = (root = transcriptsRoot(), match = () => true, si
 };
 
 /** Every session file in a folder: `<session>.jsonl` and its `<session>/subagents/*.jsonl`. */
-const sessionFiles = (folder) => {
+export const sessionFiles = (folder) => {
   const out = [];
   let names;
   try { names = readdirSync(folder); } catch { return out; }

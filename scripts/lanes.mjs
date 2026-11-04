@@ -9,12 +9,12 @@
 // `compareLanes` reproduces ~/code/projects/codemap-lanes.mjs: same folders
 // (atlas-workspace), same window (file mtime), same filter (lanes that edited),
 // same median (upper middle).
-import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { threadId } from "node:worker_threads";
 import { CONTEXT_LIMIT, efficiency, laneMetrics } from "./agent-stats.mjs";
-import { afkSessionFiles, costOf, normaliseProject, placeOfSession, roleOf, transcriptsRoot } from "./usage.mjs";
+import { afkSessionFiles, costOf, headOf, normaliseProject, placeOfSession, roleOf, sessionFiles, transcriptsRoot } from "./usage.mjs";
 
 const DAY_MS = 86_400_000;
 const LIVE_MS = 5 * 60_000;
@@ -208,6 +208,65 @@ export const lanesReport = ({ days = 30, project = null, now = Date.now(), root 
     byRole: groupBy(rows, (r) => r.role),
     lanes: rows.map(({ file, folder, ...r }) => r),
     live: rows.filter((r) => r.live).map(({ file, folder, ...r }) => r),
+  };
+};
+
+/** A transcript's first turn: its start time and context size. Cached like a lane row. */
+const openingOf = (path) => {
+  let stat;
+  try { stat = statSync(path); } catch { return null; }
+  const key = `${stat.size}:${stat.mtimeMs}`;
+  const id = `opening:${path}`;
+  const hit = loadCache().get(id);
+  if (hit?.key === key) return hit.row;
+  let text;
+  try { text = readFileSync(path, "utf8"); } catch { return null; }
+  let row = null;
+  for (const line of text.split("\n")) {
+    if (!line.includes('"usage"')) continue;
+    let e;
+    try { e = JSON.parse(line); } catch { continue; }
+    const m = e.message;
+    if (e.type !== "assistant" || !m?.usage || m.model === "<synthetic>") continue;
+    row = { at: e.timestamp, context: (m.usage.input_tokens ?? 0) + (m.usage.cache_read_input_tokens ?? 0) + (m.usage.cache_creation_input_tokens ?? 0) };
+    break;
+  }
+  cache.set(id, { key, row });
+  dirty = true;
+  return row;
+};
+
+/**
+ * Median opening context per day for each kind of session: interactive main
+ * sessions, AFK lanes (preflight pings dropped) and sub-agents of either. Every
+ * project, because a main session has no lane project to filter on.
+ */
+export const openingTrend = ({ root = transcriptsRoot(), days = 30, now = Date.now() } = {}) => {
+  const since = now - days * DAY_MS;
+  const afk = new Set(afkSessionFiles(root, undefined, since).filter((f) => !f.parent).map((f) => f.path));
+  let folders;
+  try { folders = readdirSync(root); } catch { folders = []; }
+  const byDay = new Map();
+  const sessions = { main: 0, lanes: 0, subagents: 0 };
+  for (const name of folders) {
+    for (const { path, parent } of sessionFiles(join(root, name))) {
+      try { if (statSync(path).mtimeMs < since) continue; } catch { continue; }
+      if (afk.has(path) && roleOf(headOf(path).first).role === "preflight") continue;
+      const opening = openingOf(path);
+      if (!opening?.context || !(Date.parse(opening.at) >= since)) continue;
+      const kind = parent ? "subagents" : afk.has(path) ? "lanes" : "main";
+      const day = opening.at.slice(0, 10);
+      if (!byDay.has(day)) byDay.set(day, { main: [], lanes: [], subagents: [] });
+      byDay.get(day)[kind].push(opening.context);
+      sessions[kind]++;
+    }
+  }
+  saveCache();
+  return {
+    sessions,
+    trend: [...byDay].sort(([a], [b]) => a.localeCompare(b)).map(([key, d]) => ({
+      key, main: median(d.main), lanes: median(d.lanes), subagents: median(d.subagents),
+    })),
   };
 };
 

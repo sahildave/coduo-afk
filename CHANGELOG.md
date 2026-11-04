@@ -2,6 +2,12 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **The AFK lanes page charts opening context by session type (2026-11-04).**
+  A new card on the page shows the median first-turn context per day for main
+  sessions, AFK lanes and sub-agents, on one y-scale, from the new
+  `GET /lanes/opening[?days=N]`. It covers every project, so the project filter
+  does not apply to it. No config or state change.
+
 - **`afk land` can land under the owner's delegation (2026-10-30).** New config
   key `land.ownerApproval`: `required` (default, unchanged) or `delegated`.
   With `delegated`, `afk land` skips the owner-approval requirement (an owner

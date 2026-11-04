@@ -11,7 +11,7 @@ import { isolateEnv } from "./test-helpers.mjs";
 
 const scratch = mkdtempSync(join(tmpdir(), "afk-lanes-"));
 process.env.AFK_LANES_CACHE = join(scratch, "cache.json");
-const { CACHE_VERSION, codemapWindow, collectLanes, compareLanes, laneOf, lanesReport, median } = await import("./lanes.mjs");
+const { CACHE_VERSION, codemapWindow, collectLanes, compareLanes, laneOf, lanesReport, median, openingTrend } = await import("./lanes.mjs");
 test.after(() => rmSync(scratch, { recursive: true, force: true }));
 
 const GP = "-Users-x--afk-claude-epics-Users-x-code-projects-atlas-workspace-841-atlas-workspace";
@@ -189,6 +189,28 @@ test("codemapWindow keeps the routine's rules: atlas-workspace folders, mtime wi
   assert.equal(after.readMap.lanes, 0);
 });
 
+test("openingTrend: medians per day and session type, oldest day first, no preflight pings", () => {
+  const r = root();
+  const now = Date.parse("2026-10-09T12:00:00Z");
+  const opener = (at, context, text) => [user(text, "/Users/x/code/app", at), assistant(context, [], { at })].join("\n");
+  const main = "-Users-x-code-app";
+  write(r, main, "m1", opener("2026-10-08T09:00:00Z", 50_000, "fix the header"), now);
+  write(r, main, "m2", opener("2026-10-08T10:00:00Z", 70_000, "fix the footer"), now);
+  write(r, main, "m3", opener("2026-10-07T10:00:00Z", 40_000, "fix the nav"), now);
+  write(r, main, "old", opener("2026-08-01T10:00:00Z", 9_000, "an old session, written to again"), now);
+  write(r, GP, "lane", [user(BUILDER(1), cwdOf("atlas-workspace", 841), "2026-10-08T09:00:00Z"), assistant(30_000, [], { at: "2026-10-08T09:00:00Z" })].join("\n"), now);
+  write(r, GP, "ping", [user("Reply with the single word: OK", cwdOf("atlas-workspace", 841), "2026-10-08T09:00:00Z"), assistant(5_000, [], { at: "2026-10-08T09:00:00Z" })].join("\n"), now);
+  mkdirSync(join(r, main, "m1", "subagents"), { recursive: true });
+  write(r, join(main, "m1", "subagents"), "agent-a", opener("2026-10-08T09:30:00Z", 64_000, "read the docs"), now);
+
+  const rep = openingTrend({ root: r, now, days: 30 });
+  assert.deepEqual(rep.sessions, { main: 3, lanes: 1, subagents: 1 });
+  assert.deepEqual(rep.trend, [
+    { key: "2026-10-07", main: 40_000, lanes: null, subagents: null },
+    { key: "2026-10-08", main: 70_000, lanes: 30_000, subagents: 64_000 },
+  ]);
+});
+
 test("the dashboard serves /lanes, /lanes/compare and /lanes.html", async (t) => {
   const r = root();
   write(r, GP, "a", builderLane(1));
@@ -204,6 +226,7 @@ test("the dashboard serves /lanes, /lanes/compare and /lanes.html", async (t) =>
   const cmp = await (await get("/lanes/compare?since=2000-01-01&from=bad")).json();
   assert.equal(cmp.after.lanes, 1);
   assert.equal(cmp.baseline.from, "2026-08-25", "an invalid date falls back to the default");
+  assert.equal((await (await get("/lanes/opening?days=3650")).json()).sessions.lanes, 1);
   assert.match(await (await get("/lanes.html")).text(), /<title>AFK lanes<\/title>/);
 });
 
