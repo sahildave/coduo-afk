@@ -110,7 +110,7 @@ const escape = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
  * Which loose skills each text points at: `/name`, `` `name` `` or
  * `` `name <args>` `` (a command line such as `agent-device screenshot`).
  * A listed skill that says "follow `/implement`" is useless if `implement` is
- * switched off, so the trim keeps the closure (`laneContextSettings`). A bare
+ * switched off, so the trim keeps what it points at (`laneContextSettings`). A bare
  * word is not a reference — "check" and "research" are ordinary prose.
  * `names` are the loose skills a reference can land on; `texts` may also hold
  * plugin skills (`plugin:skill`), whose references count the same way.
@@ -282,6 +282,16 @@ export const hostInventory = (projectRoot, home = homedir()) => {
   };
 };
 
+// How far the trim follows references from a kept skill. Two reaches the working
+// chain, `coduo-implement` -> `implement` -> `code-review`. An unbounded closure
+// walked mentions, not instructions: `setup-coduo-toolchain` to `setup-coduo-agents`
+// to every stack skill, which kept 47 skills for a role that lists none.
+// FAIL DIRECTION: a skill three references away is off, and a lane that wants it
+// can fail in silence, as the header says of any unlisted name. Over-keeping is
+// still the safe error for what a role lists; this bounds it, and listing the
+// skill keeps it.
+const REFERENCE_HOPS = 2;
+
 /**
  * The `--settings` keys that trim one role's context. Pure: the host is read by
  * `hostInventory`, so a test hands in the inventory it wants.
@@ -291,7 +301,7 @@ export const laneContextSettings = (role, config, inventory) => {
   const listed = [...(spec.always ?? []), ...(spec.offer ?? []), ...(role.requiredSkills ?? [])];
   const keepPlugins = new Set(listed.filter((name) => name.includes(":")).map((name) => name.split(":")[0]));
   const keepLoose = new Set(listed.filter((name) => !name.includes(":")));
-  // ...and every loose skill a kept one tells the agent to load, transitively.
+  // ...and every loose skill a kept one tells the agent to load, REFERENCE_HOPS deep.
   // A skill the role denies (`herdr`) is never pulled back in this way.
   const denied = new Set(role.permissions?.denySkills ?? []);
   const pull = (names) => { for (const ref of names ?? []) if (!denied.has(ref)) keepLoose.add(ref); };
@@ -305,8 +315,10 @@ export const laneContextSettings = (role, config, inventory) => {
   for (const [name, refs] of Object.entries(inventory?.references ?? {})) {
     if (name.includes(":") && keepPlugins.has(name.split(":")[0])) pull(refs);
   }
-  for (const name of keepLoose) {
-    for (const ref of inventory?.references?.[name] ?? []) if (!denied.has(ref)) keepLoose.add(ref);
+  for (let hop = 0, frontier = [...keepLoose]; hop < REFERENCE_HOPS; hop++) {
+    const refs = frontier.flatMap((name) => inventory?.references?.[name] ?? []);
+    frontier = refs.filter((ref) => !denied.has(ref) && !keepLoose.has(ref));
+    pull(frontier);
   }
   const enabledPlugins = Object.fromEntries((inventory?.plugins ?? [])
     .filter((key) => !keepPlugins.has(key.split("@")[0]))

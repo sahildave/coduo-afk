@@ -8,6 +8,14 @@
   `GET /lanes/opening[?days=N]`. It covers every project, so the project filter
   does not apply to it. No config or state change.
 
+||||||| parent of 4a52d75 (Bound the lane skill trim's reference closure to two hops)
+- **The lane skill trim works in repos whose instructions name a skill (2026-11-04).**
+  The trim followed skill references without limit, so one `coduo-implement` in
+  a repo's `AGENTS.md` kept 47 skills for a role that lists none, and 130 of 131
+  recent builders loaded the full listing. It now follows two references from a
+  kept skill. A skill three references away is off for that role; list it under
+  `roles.<name>.offer` to keep it. No config or state change.
+
 - **`afk land` can land under the owner's delegation (2026-10-30).** New config
   key `land.ownerApproval`: `required` (default, unchanged) or `delegated`.
   With `delegated`, `afk land` skips the owner-approval requirement (an owner

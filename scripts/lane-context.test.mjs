@@ -108,6 +108,22 @@ test("a skill a kept skill tells the agent to load stays on, transitively, but n
   assert.deepEqual(skillOverrides, { check: "off", herdr: "off", unslop: "off" });
 });
 
+// A skill that merely mentions another is enough to chain: on gitback one mention
+// of `coduo-implement` in AGENTS.md kept 47 skills, through `setup-coduo-toolchain`
+// to `setup-coduo-agents` to every stack skill, and the trim did nothing.
+test("the closure stops two references from a kept skill", () => {
+  const texts = new Map([
+    ["tdd", "Then follow `/implement`."],
+    ["implement", "Run /code-review when done."],
+    ["code-review", "If the repo has no gate, run `/setup-toolchain`."],
+    ["setup-toolchain", "See `pricing`."],
+    ["pricing", "prose"],
+  ]);
+  const inventory = { plugins: [], looseSkills: [...texts.keys()].sort(), references: skillReferences(texts) };
+  const { skillOverrides } = laneContextSettings(roleFor("implementer"), { roles: { implementer: { always: ["tdd"] } } }, inventory);
+  assert.deepEqual(skillOverrides, { pricing: "off", "setup-toolchain": "off" });
+});
+
 test("the verifier keeps /code-review even when its project lists nothing", () => {
   const settings = laneContextSettings(roleFor("verifier"), {}, INVENTORY);
   assert.equal(settings.skillOverrides["code-review"], undefined);
