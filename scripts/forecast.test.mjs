@@ -318,8 +318,8 @@ test("afk validate --unattended refuses an unanswered stop by name, and is ready
   const answered = cliFixture(t, { body: blockFor({ stops: { 204: "park", 211: '"delegate: zero must-fix left after the fixer"' } }) });
   const ready = answered.afk("validate", "203", "--unattended");
   assert.equal(ready.code, 0, ready.said);
-  assert.equal(answered.agentRan(), true, "--unattended runs the plan review");
-  assert.equal(ready.stdout.trim().split("\n").at(-1), "UNATTENDED: ready. 2 stops, all answered.");
+  assert.equal(answered.agentRan(), false, "`afk epic` reviews at launch, so --unattended alone spends nothing");
+  assert.equal(ready.stdout.trim().split("\n").at(-1), "UNATTENDED: ready. 2 stops, all answered. The plan review runs at `afk epic`.");
   assert.match(ready.stdout, /Answer: delegate: zero must-fix left after the fixer \(delegated, parks until delegated acceptance ships\)\./);
 });
 

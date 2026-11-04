@@ -305,19 +305,23 @@ export const renderForecast = (forecast, { epicId, unattended = false } = {}) =>
  * stop, an expired Infisical session) refuses. A false "ready" leaves a run waiting on a human nobody warned.
  * @returns {{ok: boolean, line: string, reason: string|null}}
  */
-export const unattendedVerdict = ({ report, review, nothing = "Nothing was created.", infisical = null }) => {
+export const unattendedVerdict = ({ report, review, nothing = "Nothing was created.", infisical = null, reviewAtLaunch = false }) => {
   const refuse = (reason) => ({ ok: false, reason, line: `UNATTENDED: refused: ${reason}. ${nothing}` });
   if (!report?.ok || !report.forecast) return refuse("validation failed");
   // (#210) The Infisical login line from `infisicalBlocker`, beside the agent
   // login the plan review just exercised: a run nobody watches must not reach
   // a gate whose `infisical run` has no session.
   if (infisical) return refuse(infisical.replace(/\.$/, ""));
-  if (!review) return refuse("the plan review did not run");
-  if (!review.ok) return refuse(`the plan review refused (${String(review.message ?? "").replace(/\.$/, "")})`);
+  // `reviewAtLaunch`: this is `afk validate`, and `afk epic` reviews before it
+  // creates anything and refuses there, so the gate still fails closed. A stop
+  // only the review can raise shows up at launch, not here.
+  if (!review && !reviewAtLaunch) return refuse("the plan review did not run");
+  if (review && !review.ok) return refuse(`the plan review refused (${String(review.message ?? "").replace(/\.$/, "")})`);
   const open = report.forecast.stops.filter((stop) => !stop.answer);
   if (open.length) {
     return refuse(`${plural(open.length, "stop")} unanswered (${open.map((stop) => `#${stop.task}`).join(", ")})`);
   }
   const count = report.forecast.stops.length;
-  return { ok: true, reason: null, line: `UNATTENDED: ready. ${plural(count, "stop")}, all answered.` };
+  const later = review ? "" : " The plan review runs at `afk epic`.";
+  return { ok: true, reason: null, line: `UNATTENDED: ready. ${plural(count, "stop")}, all answered.${later}` };
 };

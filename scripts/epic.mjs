@@ -1087,10 +1087,11 @@ const cliValidate = async ({ root, repo, number, baseBranch, json, bodyPath, rev
   // must stay usable with no LLM at all, and must keep creating nothing inside
   // the repository. With the flag it starts one read-only agent and writes its
   // transcript to a throwaway directory outside the working tree.
-  // `--unattended` needs the plan review's verdict, so it turns the review on.
+  // `--unattended` does not turn it on: `afk epic` reviews at launch and refuses
+  // there, and paying here as well ran the review twice per launch.
   // The carry-forward store it reads and writes is outside the repository too.
   const outcome =
-    (review || unattended) && report.ok
+    review && report.ok
       ? await planReview({
           root,
           config,
@@ -1103,7 +1104,7 @@ const cliValidate = async ({ root, repo, number, baseBranch, json, bodyPath, rev
       : null;
   if (outcome) report.planReview = outcome;
   const verdict = unattended
-    ? unattendedVerdict({ report, review: outcome, infisical: infisicalBlocker({ config, dag: report.dag, cwd: root }) })
+    ? unattendedVerdict({ report, review: outcome, reviewAtLaunch: !review, infisical: infisicalBlocker({ config, dag: report.dag, cwd: root }) })
     : null;
   if (verdict) report.unattended = verdict;
   if (json) console.log(JSON.stringify(report, null, 2));

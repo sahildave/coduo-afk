@@ -768,15 +768,15 @@ test("the human rendering prints the raised stop after the plan review", () => {
   rmSync(fx.dir, { recursive: true, force: true });
 });
 
-test("`afk validate --unattended` refuses an unanswered needs_human stop by name, and is ready once it is parked", () => {
+test("`afk validate --unattended --plan-review` refuses an unanswered needs_human stop by name, and is ready once it is parked", () => {
   const open = fixture(NEEDS_HUMAN, { schemaBody: NEEDS_HUMAN_BODY });
-  const refused = afk(open, ["validate", "203", "--repo=owner/afk", "--unattended"]);
+  const refused = afk(open, ["validate", "203", "--repo=owner/afk", "--unattended", "--plan-review"]);
   assert.equal(refused.status, 1, `${refused.stdout}\n${refused.stderr}`);
   assert.equal(refused.stdout.trim().split("\n").at(-1), "UNATTENDED: refused: 1 stop unanswered (#204). Nothing was created.");
   rmSync(open.dir, { recursive: true, force: true });
 
   const parked = fixture(NEEDS_HUMAN, { schemaBody: NEEDS_HUMAN_BODY, yaml: ["  stops:", "    204: park"] });
-  const ready = afk(parked, ["validate", "203", "--repo=owner/afk", "--unattended"]);
+  const ready = afk(parked, ["validate", "203", "--repo=owner/afk", "--unattended", "--plan-review"]);
   assert.equal(ready.status, 0, `${ready.stdout}\n${ready.stderr}`);
   assert.equal(ready.stdout.trim().split("\n").at(-1), "UNATTENDED: ready. 1 stop, all answered.");
   rmSync(parked.dir, { recursive: true, force: true });
