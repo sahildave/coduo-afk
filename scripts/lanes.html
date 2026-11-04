@@ -160,7 +160,7 @@
       // One line per series over the daily trend; x is the day index.
       const chart = (points, value, color) => {
         const pts = points.filter((p) => value(p) != null);
-        if (pts.length < 2) return `<p class="muted">Not enough days with editing lanes.</p>`;
+        if (pts.length < 2) return `<p class="muted">Not enough days of data.</p>`;
         const W = 480, H = 150, L = 38, B = 20;
         // The y-scale stops at the 95th percentile when one day towers over
         // the rest (2026-09-09 sat at 191k); days above it pin to the top as
@@ -178,7 +178,7 @@
         const labels = [points[0], points[Math.floor(points.length / 2)], points[points.length - 1]].map((p) => `<text x="${x(idx.get(p.key))}" y="${H - 4}" text-anchor="middle">${p.key.slice(5)}</text>`).join("");
         const dots = pts.map((p) => {
           const clipped = value(p) > max;
-          return `<circle cx="${x(idx.get(p.key))}" cy="${y(at(value(p)))}" r="${clipped ? 3.5 : 2.5}" fill="${clipped ? "var(--card)" : color}" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke"><title>${p.key}: ${value.fmt(value(p))} (${p.edited} editing lanes)${clipped ? ", above the chart's top" : ""}</title></circle>`;
+          return `<circle cx="${x(idx.get(p.key))}" cy="${y(at(value(p)))}" r="${clipped ? 3.5 : 2.5}" fill="${clipped ? "var(--card)" : color}" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke"><title>${p.key}: ${value.fmt(value(p))} ${p.edited == null ? "" : ` (${p.edited} editing lanes)`}${clipped ? ", above the chart's top" : ""}</title></circle>`;
         }).join("");
         return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img">${ticks}${labels}<path d="${path}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/>${dots}</svg>`;
       };

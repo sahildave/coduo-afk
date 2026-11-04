@@ -237,9 +237,10 @@ const openingOf = (path) => {
 };
 
 /**
- * Median opening context per day for each kind of session: interactive main
- * sessions, AFK lanes (preflight pings dropped) and sub-agents of either. Every
- * project, because a main session has no lane project to filter on.
+ * Median opening context per day for each kind of session: main sessions, AFK
+ * lanes (preflight pings dropped) and sub-agents of either. Main is every other
+ * top-level session, so it includes scheduled tasks and runner helpers no role
+ * opening matches. Every project, because a main session has no lane project.
  */
 export const openingTrend = ({ root = transcriptsRoot(), days = 30, now = Date.now() } = {}) => {
   const since = now - days * DAY_MS;
