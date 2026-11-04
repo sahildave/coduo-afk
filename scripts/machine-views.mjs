@@ -7,6 +7,7 @@
 //   GET /usage[?all=1]             token usage and cost (scripts/usage.mjs)
 //   GET /lanes[?days=N&project=]   context and tool calls per lane (scripts/lanes.mjs)
 //   GET /lanes/compare             the codemap-removal routine's table
+//   GET /lanes/opening[?days=N]    opening context per day, by session type
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -58,6 +59,8 @@ export const serveMachineView = (req, res) => {
     const opt = { since: q.get("since"), baselineFrom: q.get("from"), baselineTo: q.get("to") };
     for (const k of Object.keys(opt)) if (!/^\d{4}-\d{2}-\d{2}$/.test(opt[k] ?? "")) delete opt[k];
     lanes = offThread("compareLanes", opt);
+  } else if (url.pathname === "/lanes/opening") {
+    lanes = offThread("openingTrend", { days: Math.min(365, Math.max(1, Number(q.get("days")) || 30)) });
   } else if (url.pathname === "/lanes") {
     const days = Math.min(365, Math.max(1, Number(q.get("days")) || 30));
     lanes = offThread("lanesReport", { days, project: q.get("project") || null });

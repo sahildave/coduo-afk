@@ -107,6 +107,7 @@
       <section class="card" id="head"><p class="muted">Reading lane transcripts…</p></section>
       <section class="card" id="live" hidden></section>
       <section class="card" id="trend"></section>
+      <section class="card" id="opening"><h2>Opening context per day</h2><p class="muted">Reading transcripts…</p></section>
       <section class="card" id="compare">
         <h2>Before and after a change <span class="muted">atlas-workspace lanes that edited, as the code-map routine counts them</span></h2>
         <div class="controls">
@@ -159,7 +160,7 @@
       // One line per series over the daily trend; x is the day index.
       const chart = (points, value, color) => {
         const pts = points.filter((p) => value(p) != null);
-        if (pts.length < 2) return `<p class="muted">Not enough days with editing lanes.</p>`;
+        if (pts.length < 2) return `<p class="muted">Not enough days of data.</p>`;
         const W = 480, H = 150, L = 38, B = 20;
         // The y-scale stops at the 95th percentile when one day towers over
         // the rest (2026-09-09 sat at 191k); days above it pin to the top as
@@ -167,7 +168,7 @@
         const sorted = pts.map(value).sort((a, b) => a - b);
         const p95 = sorted[Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1)];
         const top = sorted[sorted.length - 1];
-        const max = (top > p95 * 1.5 ? p95 : top) || 1;
+        const max = value.max ?? ((top > p95 * 1.5 ? p95 : top) || 1);
         const at = (v) => Math.min(v, max);
         const x = (i) => L + (i / (points.length - 1 || 1)) * (W - L - 6);
         const y = (v) => H - B - (v / max) * (H - B - 8);
@@ -177,7 +178,7 @@
         const labels = [points[0], points[Math.floor(points.length / 2)], points[points.length - 1]].map((p) => `<text x="${x(idx.get(p.key))}" y="${H - 4}" text-anchor="middle">${p.key.slice(5)}</text>`).join("");
         const dots = pts.map((p) => {
           const clipped = value(p) > max;
-          return `<circle cx="${x(idx.get(p.key))}" cy="${y(at(value(p)))}" r="${clipped ? 3.5 : 2.5}" fill="${clipped ? "var(--card)" : color}" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke"><title>${p.key}: ${value.fmt(value(p))} (${p.edited} editing lanes)${clipped ? ", above the chart's top" : ""}</title></circle>`;
+          return `<circle cx="${x(idx.get(p.key))}" cy="${y(at(value(p)))}" r="${clipped ? 3.5 : 2.5}" fill="${clipped ? "var(--card)" : color}" stroke="${color}" stroke-width="1.5" vector-effect="non-scaling-stroke"><title>${p.key}: ${value.fmt(value(p))} ${p.edited == null ? "" : ` (${p.edited} editing lanes)`}${clipped ? ", above the chart's top" : ""}</title></circle>`;
         }).join("");
         return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img">${ticks}${labels}<path d="${path}" fill="none" stroke="${color}" stroke-width="2" vector-effect="non-scaling-stroke"/>${dots}</svg>`;
       };
@@ -189,6 +190,15 @@
             <div><h3><i style="background:var(--bar)"></i>Context added before first edit</h3>${chart(r.trend, ctxVal, "var(--bar)")}</div>
             <div><h3><i style="background:var(--alt)"></i>Explore calls before first edit</h3>${chart(r.trend, expVal, "var(--alt)")}</div>
           </div>`;
+      };
+
+      // One y-scale across the three charts, so their heights compare.
+      const opening = (r) => {
+        const kinds = [["main", "Main sessions", "var(--bar)"], ["lanes", "AFK lanes", "var(--ok)"], ["subagents", "Sub-agents", "var(--alt)"]];
+        const all = kinds.flatMap(([key]) => r.trend.map((p) => p[key])).filter((v) => v != null).sort((a, b) => a - b);
+        const max = all[Math.ceil(all.length * 0.95) - 1];
+        $("opening").innerHTML = `<h2>Opening context per day <span class="muted">median first-turn context, all projects, by the day the session started</span></h2>
+          <div class="charts">${kinds.map(([key, label, color]) => `<div><h3><i style="background:${color}"></i>${label} <span class="muted num">${r.sessions[key]}</span></h3>${chart(r.trend, Object.assign((p) => p[key], { fmt: k, max }), color)}</div>`).join("")}</div>`;
       };
 
       const groupTable = (title, rows, label) => `<section class="card"><h2>${title}</h2><div class="scroll"><table class="num">
@@ -259,6 +269,11 @@
         } catch (e) { $("head").innerHTML = `<p class="err">Could not load /lanes: ${esc(e.message)}</p>`; }
       };
 
+      const loadOpening = async () => {
+        try { opening(await (await fetch(`/lanes/opening?days=${days}`)).json()); }
+        catch (e) { $("opening").innerHTML = `<p class="err">Could not load /lanes/opening: ${esc(e.message)}</p>`; }
+      };
+
       const cmpRow = (label, g) => `<tr><td class="wrap">${label}</td><td class="r">${g.lanes}</td><td class="r"><b>${k(g.contextBeforeEdit)}</b></td><td class="r">${n0(g.callsBeforeEdit)}</td><td class="r"><b>${n0(g.exploreBeforeEdit)}</b></td><td class="r narrow-hide">${n0(g.graphifyBeforeEdit)}</td><td class="r cost opt">${k(g.billedBeforeEdit)}</td><td class="r cost opt">${k(g.outputTokens)}</td></tr>`;
       const loadCompare = async () => {
         const q = `since=${$("c-since").value}&from=${$("c-from").value}&to=${$("c-to").value}`;
@@ -281,7 +296,7 @@
         const b = e.target.closest("button"); if (!b) return;
         days = Number(b.dataset.days);
         for (const x of document.querySelectorAll(".seg button")) x.setAttribute("aria-pressed", String(x === b));
-        limit = 50; load();
+        limit = 50; load(); loadOpening();
       });
       $("project").addEventListener("change", (e) => { project = e.target.value; limit = 50; load(); });
       for (const id of ["c-from", "c-to", "c-since"]) $(id).addEventListener("change", loadCompare);
@@ -294,7 +309,8 @@
       });
       $("lanes").addEventListener("keydown", (e) => { if (e.key === "Enter" && e.target.matches("tr.row")) e.target.click(); });
       load().then(loadCompare);
-      setInterval(load, 60_000);
+      loadOpening();
+      setInterval(() => { load(); loadOpening(); }, 60_000);
     </script>
   </body>
 </html>
