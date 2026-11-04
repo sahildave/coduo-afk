@@ -108,6 +108,30 @@ test("a skill a kept skill tells the agent to load stays on, transitively, but n
   assert.deepEqual(skillOverrides, { check: "off", herdr: "off", unslop: "off" });
 });
 
+// `implement` says: call the Skill tool with "code-review". That is an instruction,
+// and the backtick and slash forms did not see it, so a repo listing `implement`
+// kept `code-review` only by luck of a longer chain.
+test("a quoted Skill tool instruction is a reference", () => {
+  const texts = new Map([["implement", 'Then call the Skill tool with "code-review".'], ["code-review", "prose"]]);
+  assert.deepEqual(skillReferences(texts).implement, ["code-review"]);
+});
+
+// A skill that merely mentions another is enough to chain: gitback's instruction
+// files kept 47 skills, through `setup-coduo-toolchain` to `setup-coduo-agents`
+// to every stack skill.
+test("the closure stops two references from a kept skill", () => {
+  const texts = new Map([
+    ["tdd", "Then follow `/implement`."],
+    ["implement", "Run /code-review when done."],
+    ["code-review", "If the repo has no gate, run `/setup-toolchain`."],
+    ["setup-toolchain", "See `pricing`."],
+    ["pricing", "prose"],
+  ]);
+  const inventory = { plugins: [], looseSkills: [...texts.keys()].sort(), references: skillReferences(texts) };
+  const { skillOverrides } = laneContextSettings(roleFor("implementer"), { roles: { implementer: { always: ["tdd"] } } }, inventory);
+  assert.deepEqual(skillOverrides, { pricing: "off", "setup-toolchain": "off" });
+});
+
 test("the verifier keeps /code-review even when its project lists nothing", () => {
   const settings = laneContextSettings(roleFor("verifier"), {}, INVENTORY);
   assert.equal(settings.skillOverrides["code-review"], undefined);
