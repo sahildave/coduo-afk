@@ -107,8 +107,9 @@ const looseSkillTexts = (projectRoot, home) => {
 const escape = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 /**
- * Which loose skills each text points at: `/name`, `` `name` `` or
- * `` `name <args>` `` (a command line such as `agent-device screenshot`).
+ * Which loose skills each text points at: `/name`, `` `name` ``,
+ * `` `name <args>` `` (a command line such as `agent-device screenshot`) or
+ * `Skill tool with "name"`.
  * A listed skill that says "follow `/implement`" is useless if `implement` is
  * switched off, so the trim keeps what it points at (`laneContextSettings`). A bare
  * word is not a reference — "check" and "research" are ordinary prose.
@@ -120,7 +121,7 @@ export const skillReferences = (texts, names = [...texts.keys()]) =>
     && referencePattern(other).test(texts.get(name)))]));
 
 const referencePattern = (name) =>
-  new RegExp(`(?:\`/?${escape(name)}(?:\\s[^\`\\n]*)?\`|(?<![\\w/.-])/${escape(name)}(?![\\w-]))`);
+  new RegExp(`(?:\`/?${escape(name)}(?:\\s[^\`\\n]*)?\`|(?<![\\w/.-])/${escape(name)}(?![\\w-])|Skill tool with "${escape(name)}")`);
 
 /**
  * The files a plugin could be keeping `<plugin>:<skill>` in, in the order worth
@@ -282,10 +283,11 @@ export const hostInventory = (projectRoot, home = homedir()) => {
   };
 };
 
-// How far the trim follows references from a kept skill. Two reaches the working
-// chain, `coduo-implement` -> `implement` -> `code-review`. An unbounded closure
-// walked mentions, not instructions: `setup-coduo-toolchain` to `setup-coduo-agents`
-// to every stack skill, which kept 47 skills for a role that lists none.
+// How far the trim follows references from a kept skill. One reaches what
+// `coduo-implement` calls; two leaves a margin for a wrapper around it. An
+// unbounded closure walked mentions, not instructions: `setup-coduo-toolchain`
+// to `setup-coduo-agents` to every stack skill, which kept 47 skills for a role
+// that lists none.
 // FAIL DIRECTION: a skill three references away is off, and a lane that wants it
 // can fail in silence, as the header says of any unlisted name. Over-keeping is
 // still the safe error for what a role lists; this bounds it, and listing the

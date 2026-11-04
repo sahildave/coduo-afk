@@ -15,6 +15,21 @@
   recent builders loaded the full listing. It now follows two references from a
   kept skill. A skill three references away is off for that role; list it under
   `roles.<name>.offer` to keep it. No config or state change.
+||||||| parent of 21fde2c (Count quoted Skill tool instructions as references, and correct the trim's notes)
+- **The lane skill trim works in repos whose instructions name a skill (2026-11-04).**
+  The trim followed skill references without limit, so one `coduo-implement` in
+  a repo's `AGENTS.md` kept 47 skills for a role that lists none, and 130 of 131
+  recent builders loaded the full listing. It now follows two references from a
+  kept skill. A skill three references away is off for that role; list it under
+  `roles.<name>.offer` to keep it. No config or state change.
+- **The lane skill trim stops at two references (2026-11-04).** The trim followed
+  skill references without limit, so gitback's instruction files kept 47 skills
+  for a role that lists none, and 130 of 131 builders in the last 14 days listed
+  over 60 skills. It now follows two references from a kept skill (19 on
+  gitback), and counts `Skill tool with "name"` as a reference. A skill further
+  away is off for that role; list it under `roles.<name>.offer` to keep it. Repos
+  whose instructions name a setup skill still keep 30 or so. No config or state
+  change.
 
 - **`afk land` can land under the owner's delegation (2026-10-30).** New config
   key `land.ownerApproval`: `required` (default, unchanged) or `delegated`.

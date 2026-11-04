@@ -108,9 +108,17 @@ test("a skill a kept skill tells the agent to load stays on, transitively, but n
   assert.deepEqual(skillOverrides, { check: "off", herdr: "off", unslop: "off" });
 });
 
-// A skill that merely mentions another is enough to chain: on gitback one mention
-// of `coduo-implement` in AGENTS.md kept 47 skills, through `setup-coduo-toolchain`
-// to `setup-coduo-agents` to every stack skill, and the trim did nothing.
+// `implement` says: call the Skill tool with "code-review". That is an instruction,
+// and the backtick and slash forms did not see it, so a repo listing `implement`
+// kept `code-review` only by luck of a longer chain.
+test("a quoted Skill tool instruction is a reference", () => {
+  const texts = new Map([["implement", 'Then call the Skill tool with "code-review".'], ["code-review", "prose"]]);
+  assert.deepEqual(skillReferences(texts).implement, ["code-review"]);
+});
+
+// A skill that merely mentions another is enough to chain: gitback's instruction
+// files kept 47 skills, through `setup-coduo-toolchain` to `setup-coduo-agents`
+// to every stack skill.
 test("the closure stops two references from a kept skill", () => {
   const texts = new Map([
     ["tdd", "Then follow `/implement`."],
