@@ -589,22 +589,36 @@ const clearPreflight = (worktree) => {
 // runner sets exactly that key for the lane's worktree, and nothing else.
 // The file is rewritten by every running claude; read-modify-rename keeps the
 // window to one read, and mode 0600 is kept because the file holds the login.
-const claudeConfigPath = () => resolve(process.env.CLAUDE_CONFIG_DIR ?? homedir(), '.claude.json');
+const claudeConfigPath = () => resolve(process.env.CLAUDE_CONFIG_DIR || homedir(), '.claude.json');
 export const trustWorkspace = (dir) => {
   const path = claudeConfigPath();
   const key = realpathSync(dir);
   let config = {};
   try { config = JSON.parse(readFileSync(path, 'utf8')); } catch (error) {
     // An unreadable config is not ours to replace: leave it, and let the lane
-    // fail visibly at the dialog rather than wipe the user's login.
-    if (error.code !== 'ENOENT') return false;
+    // meet the dialog rather than wipe the user's login.
+    if (error.code !== 'ENOENT') throw new Error(`${path} is unreadable (${error.message})`);
   }
-  if (config.projects?.[key]?.hasTrustDialogAccepted === true) return true;
+  if (config.projects?.[key]?.hasTrustDialogAccepted === true) return;
   config.projects = { ...config.projects, [key]: { ...config.projects?.[key], hasTrustDialogAccepted: true } };
   const temporary = `${path}.afk.${process.pid}.tmp`;
-  writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
-  renameSync(temporary, path);
-  return true;
+  try {
+    writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+    renameSync(temporary, path);
+  } catch (error) {
+    rmSync(temporary, { force: true });
+    throw error;
+  }
+};
+
+// Fail direction: open. A lane that cannot be trusted still launches — it may
+// stop at the dialog, which herdr reports as agent_not_ready — because losing a
+// lane to a config write is worse than one that might stall. The log names the
+// cause so that agent_not_ready is not a mystery.
+const trustOrWarn = (dir, key, say) => {
+  try { trustWorkspace(dir); } catch (error) {
+    say(`HERDR: lane ${key} could not trust ${dir} for claude (${error.message}); it may stop at the trust dialog.`);
+  }
 };
 
 const reportPath = (cwd) => resolve(cwd, '.afk-report.json');
@@ -895,6 +909,9 @@ const runHerdrAgent = async ({ role, key, taskId, cwd, paneId, workspaceId, agen
   let unsafePriorAgent = false;
   const startAgent = async () => {
     for (let wait = 2_000; ; wait *= 2) {
+      // Every try, not once: a running claude can write its config back over
+      // the entry while this loop backs off.
+      if (backend === 'claude') trustOrWarn(cwd, key, say);
       try {
         return await herdr(...laneAgentStartArgs({ name, pane, agent, broker, launchDir: dirname(promptPath), cwd }));
       } catch (err) {
@@ -1138,10 +1155,7 @@ export const runHerdrRole = async ({ role, root, task, worktree, agent, promptPa
   if (role.pane === 'lane') {
     const lane = await adoptLane({ root, task, worktree });
     const backend = resolveBackend(agent.backend ?? 'claude');
-    if (backend === 'claude') {
-      writePreflight(worktree, role);
-      trustWorkspace(worktree);
-    }
+    if (backend === 'claude') writePreflight(worktree, role);
     const result = await runHerdrAgent({
       role, key, taskId: task.id, cwd: worktree, paneId: lane.paneId, workspaceId: lane.workspaceId,
       agent, promptPath, say, onPid, attempt, checklistPath, idleUnreportedMs,

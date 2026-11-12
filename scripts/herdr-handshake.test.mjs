@@ -13,7 +13,7 @@
 // with the shapes runtime-herdr.mjs reads.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { recreateParent, runHerdrRole } from "./runtime-herdr.mjs";
@@ -94,11 +94,13 @@ if (pair === 'agent prompt') {
     process.exit(1);
   }
   fs.writeFileSync(startedPath, '1');
-  // What claude would read on launch: is this lane's worktree trusted yet?
+  // What claude would read on launch: the folders trusted at this moment.
+  let trusted = [];
   try {
     const config = JSON.parse(fs.readFileSync(require('node:path').join(process.env.CLAUDE_CONFIG_DIR, '.claude.json'), 'utf8'));
-    fs.writeFileSync(${JSON.stringify(join(dir, "trusted-at-start"))}, String(config.projects?.[fs.realpathSync(${JSON.stringify(worktree)})]?.hasTrustDialogAccepted === true));
-  } catch { fs.writeFileSync(${JSON.stringify(join(dir, "trusted-at-start"))}, 'false'); }
+    trusted = Object.keys(config.projects ?? {}).filter((k) => config.projects[k].hasTrustDialogAccepted === true);
+  } catch {}
+  fs.writeFileSync(${JSON.stringify(join(dir, "trusted-at-start"))}, JSON.stringify(trusted));
   fs.writeFileSync(startedPanePath, argv[argv.indexOf('--pane') + 1]);
   out({ result: { agent: { pid: 4242 } } });
 } else if (pair === 'agent send-keys') {
@@ -152,6 +154,7 @@ const CODEX_AGENT = {
   timeoutMs: 30_000,
 };
 
+const trustedAtStart = (fx) => JSON.parse(readFileSync(join(fx.dir, "trusted-at-start"), "utf8"));
 const calls = (fx) => readFileSync(fx.log, "utf8").trim().split("\n").filter(Boolean);
 const indexOf = (list, prefix) => list.findIndex((call) => call.startsWith(prefix));
 
@@ -202,7 +205,7 @@ test("a lane's worktree is trusted before its agent starts", async () => {
   writeFileSync(config, JSON.stringify({ numStartups: 7, projects: { "/elsewhere": { hasTrustDialogAccepted: true } } }));
   await runLane(fx);
 
-  assert.equal(readFileSync(join(fx.dir, "trusted-at-start"), "utf8"), "true", "claude launched into an untrusted worktree");
+  assert.ok(trustedAtStart(fx).includes(realpathSync(fx.worktree)), "claude launched into an untrusted worktree");
   const after = JSON.parse(readFileSync(config, "utf8"));
   assert.equal(after.numStartups, 7);
   assert.equal(after.projects["/elsewhere"].hasTrustDialogAccepted, true);
@@ -368,6 +371,33 @@ test("a lane whose pane is held by a stale agent moves to a fresh one", async ()
   const starts = list.filter((call) => call.startsWith("agent start"));
   assert.equal(starts.length, 2, `expected one failed start and one recovery:\n${list.join("\n")}`);
   assert.ok(starts[1].includes("--pane wT2:p1"), `the retry reused the busy pane: ${starts[1]}`);
+  rmSync(fx.dir, { recursive: true, force: true });
+});
+
+// Trust is a convenience for the dialog, not a reason to lose the lane: if the
+// config cannot be written, the lane still launches and the log says why it may
+// stop at the dialog.
+test("a lane still starts, and says so, when trust cannot be written", async () => {
+  const fx = fixture();
+  const previous = process.env.CLAUDE_CONFIG_DIR;
+  process.env.CLAUDE_CONFIG_DIR = join(fx.dir, "no-such-dir");
+  const said = [];
+  try {
+    await runLane(fx, ROLE, { model: "claude-opus-5", settings: null }, { say: (line) => said.push(line) });
+  } finally {
+    process.env.CLAUDE_CONFIG_DIR = previous;
+  }
+  assert.ok(calls(fx).some((call) => call.startsWith("agent start")), "the lane never started");
+  assert.ok(said.some((line) => /could not trust/.test(line)), `no warning:\n${said.join("\n")}`);
+  rmSync(fx.dir, { recursive: true, force: true });
+});
+
+// The integrator runs claude at the project root, which in a repo nobody has
+// opened Claude Code in is just as untrusted as a fresh lane worktree.
+test("the integrator's project root is trusted before its agent starts", async () => {
+  const fx = fixture();
+  await runLane(fx, roleFor("integrator"), DONE_AGENT);
+  assert.ok(trustedAtStart(fx).includes(realpathSync(fx.dir)), "the integrator launched into an untrusted root");
   rmSync(fx.dir, { recursive: true, force: true });
 });
 
