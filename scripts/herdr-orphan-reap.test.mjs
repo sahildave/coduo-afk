@@ -19,6 +19,10 @@ import { join } from "node:path";
 import { orphanFromNameTaken, reapTarget, runHerdrRole } from "./runtime-herdr.mjs";
 import { roleFor } from "./roles.mjs";
 
+// Lanes write workspace trust into Claude Code's global config; keep it out of
+// the real ~/.claude.json.
+process.env.CLAUDE_CONFIG_DIR = mkdtempSync(join(tmpdir(), "afk-test-claude-"));
+
 // --- the pure decision ------------------------------------------------------
 
 test("orphanFromNameTaken reads the workspace and pane the error names", () => {
