@@ -9,6 +9,10 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { roleFor } from "./roles.mjs";
 
+// Lanes write workspace trust into Claude Code's global config; keep it out of
+// the real ~/.claude.json.
+process.env.CLAUDE_CONFIG_DIR = mkdtempSync(join(tmpdir(), "afk-test-claude-"));
+
 // The transcript probe is intentionally hermetic: the runtime reads the
 // process home, and this test must not write into a user's real Claude data.
 const testHome = mkdtempSync(join(tmpdir(), "afk-herdr-home-"));

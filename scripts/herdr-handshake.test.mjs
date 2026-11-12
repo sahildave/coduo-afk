@@ -13,11 +13,15 @@
 // with the shapes runtime-herdr.mjs reads.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { recreateParent, runHerdrRole } from "./runtime-herdr.mjs";
 import { roleFor } from "./roles.mjs";
+
+// Lanes here write workspace trust into Claude Code's global config; keep it
+// out of the real ~/.claude.json.
+process.env.CLAUDE_CONFIG_DIR = mkdtempSync(join(tmpdir(), "afk-handshake-claude-"));
 
 // `status` is what `herdr agent get` reports after the first prompt: "working"
 // is an agent that heard us, "idle" is one that did not.
@@ -90,6 +94,11 @@ if (pair === 'agent prompt') {
     process.exit(1);
   }
   fs.writeFileSync(startedPath, '1');
+  // What claude would read on launch: is this lane's worktree trusted yet?
+  try {
+    const config = JSON.parse(fs.readFileSync(require('node:path').join(process.env.CLAUDE_CONFIG_DIR, '.claude.json'), 'utf8'));
+    fs.writeFileSync(${JSON.stringify(join(dir, "trusted-at-start"))}, String(config.projects?.[fs.realpathSync(${JSON.stringify(worktree)})]?.hasTrustDialogAccepted === true));
+  } catch { fs.writeFileSync(${JSON.stringify(join(dir, "trusted-at-start"))}, 'false'); }
   fs.writeFileSync(startedPanePath, argv[argv.indexOf('--pane') + 1]);
   out({ result: { agent: { pid: 4242 } } });
 } else if (pair === 'agent send-keys') {
@@ -180,6 +189,24 @@ test("a lane waits until its agent can hear it before sending the prompt", async
   assert.ok(start >= 0, `no agent start:\n${list.join("\n")}`);
   assert.ok(waitIdle > start, `no readiness wait after start:\n${list.join("\n")}`);
   assert.ok(prompt > waitIdle, `the prompt was sent before the readiness wait:\n${list.join("\n")}`);
+  rmSync(fx.dir, { recursive: true, force: true });
+});
+
+// Every lane is a fresh worktree, and an interactive claude in an untrusted
+// folder stops at the trust dialog: `agent start` never saw it ready, and
+// gitsu-tools#1 filed every lane as an infra failure (2026-11-12). The worktree
+// must be trusted before the agent launches, and the rest of the config kept.
+test("a lane's worktree is trusted before its agent starts", async () => {
+  const fx = fixture();
+  const config = join(process.env.CLAUDE_CONFIG_DIR, ".claude.json");
+  writeFileSync(config, JSON.stringify({ numStartups: 7, projects: { "/elsewhere": { hasTrustDialogAccepted: true } } }));
+  await runLane(fx);
+
+  assert.equal(readFileSync(join(fx.dir, "trusted-at-start"), "utf8"), "true", "claude launched into an untrusted worktree");
+  const after = JSON.parse(readFileSync(config, "utf8"));
+  assert.equal(after.numStartups, 7);
+  assert.equal(after.projects["/elsewhere"].hasTrustDialogAccepted, true);
+  assert.equal(statSync(config).mode & 0o777, 0o600, "the config holds the login and must stay private");
   rmSync(fx.dir, { recursive: true, force: true });
 });
 

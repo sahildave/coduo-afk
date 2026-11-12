@@ -13,7 +13,7 @@
 // signal, and fast detection of auth death (an expired OAuth session shows
 // up there long before any timeout would fire).
 import { execFile } from 'node:child_process';
-import { accessSync, appendFileSync, constants, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { accessSync, appendFileSync, constants, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { promisify } from 'node:util';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -573,6 +573,40 @@ const clearPreflight = (worktree) => {
   } catch {}
 };
 
+// --- workspace trust --------------------------------------------------------
+// An interactive `claude` in a folder it has not trusted stops at "Quick safety
+// check: Is this a project you created or one you trust?", so `herdr agent
+// start` timed out with `agent_not_ready` and the lane was filed as an infra
+// failure (gitsu-tools#1, 2026-11-12). `claude -p` skips the dialog, which is
+// why the direct runtime never hit it. Trusting a parent folder does not help:
+// inside a git repo Claude Code reads trust at the repo's own root only, and
+// every lane worktree is its own root.
+//
+// Claude Code has no flag, env var or setting that skips the dialog in an
+// interactive session (checked against 2.1.322 `--help` and the docs), and its
+// own "not trusted" message names the record to set instead:
+// `projects[<path>].hasTrustDialogAccepted: true` in its global config. So the
+// runner sets exactly that key for the lane's worktree, and nothing else.
+// The file is rewritten by every running claude; read-modify-rename keeps the
+// window to one read, and mode 0600 is kept because the file holds the login.
+const claudeConfigPath = () => resolve(process.env.CLAUDE_CONFIG_DIR ?? homedir(), '.claude.json');
+export const trustWorkspace = (dir) => {
+  const path = claudeConfigPath();
+  const key = realpathSync(dir);
+  let config = {};
+  try { config = JSON.parse(readFileSync(path, 'utf8')); } catch (error) {
+    // An unreadable config is not ours to replace: leave it, and let the lane
+    // fail visibly at the dialog rather than wipe the user's login.
+    if (error.code !== 'ENOENT') return false;
+  }
+  if (config.projects?.[key]?.hasTrustDialogAccepted === true) return true;
+  config.projects = { ...config.projects, [key]: { ...config.projects?.[key], hasTrustDialogAccepted: true } };
+  const temporary = `${path}.afk.${process.pid}.tmp`;
+  writeFileSync(temporary, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  renameSync(temporary, path);
+  return true;
+};
+
 const reportPath = (cwd) => resolve(cwd, '.afk-report.json');
 
 // --- the phase walk, kept ---------------------------------------------------
@@ -1104,7 +1138,10 @@ export const runHerdrRole = async ({ role, root, task, worktree, agent, promptPa
   if (role.pane === 'lane') {
     const lane = await adoptLane({ root, task, worktree });
     const backend = resolveBackend(agent.backend ?? 'claude');
-    if (backend === 'claude') writePreflight(worktree, role);
+    if (backend === 'claude') {
+      writePreflight(worktree, role);
+      trustWorkspace(worktree);
+    }
     const result = await runHerdrAgent({
       role, key, taskId: task.id, cwd: worktree, paneId: lane.paneId, workspaceId: lane.workspaceId,
       agent, promptPath, say, onPid, attempt, checklistPath, idleUnreportedMs,

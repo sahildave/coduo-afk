@@ -2,6 +2,16 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **Herdr lanes start in repos Claude Code has not trusted yet (2026-11-12).**
+  An interactive `claude` stopped at the workspace trust dialog in each fresh
+  lane worktree when the repo's main checkout had no trust record, so `herdr
+  agent start` failed with `agent_not_ready` and the lane was filed as an infra
+  failure. Before starting a Claude lane the runner now sets
+  `projects[<worktree>].hasTrustDialogAccepted: true` in Claude Code's global
+  config (`$CLAUDE_CONFIG_DIR/.claude.json`, else `~/.claude.json`), the record
+  Claude Code's own message names; no flag or setting skips the dialog. No
+  config or state change.
+
 - **The AFK lanes page charts opening context by session type (2026-11-04).**
   A new card on the page shows the median first-turn context per day for main
   sessions, AFK lanes and sub-agents, on one y-scale, from the new
