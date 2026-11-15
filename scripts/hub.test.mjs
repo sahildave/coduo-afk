@@ -1292,6 +1292,23 @@ test("#274: an exited run closed under 24 h ago reaches the snapshot with closed
   assert.doesNotMatch(html, /did not start/);
 });
 
+test("a relaunched epic that is live again carries no closedAt from its last close", async () => {
+  const m = machine();
+  const root = checkout(m.home, "relaunched", {
+    dag: { epic: { id: "9", title: "x" }, branch: "feat/relaunched", tasks: [{ id: "1" }] },
+    tasks: { 1: { lifecycle: "building" } },
+    dashboard: null,
+    dashboardSkipped: true,
+    epicClose: { lifecycle: "closed", outcome: "incomplete", closedAt: new Date(Date.now() - 3_600_000).toISOString() },
+  });
+  await storeRun(m, { adopted: [{ epic: "9", root }] });
+  const out = join(m.home, "snapshot.json");
+  const r = spawnSync(process.execPath, [afk, "hub", "snapshot", "--out", out], { env: snapshotEnv(m), encoding: "utf8" });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  const doc = JSON.parse(readFileSync(out, "utf8"));
+  assert.deepEqual(doc.runs.map((run) => [run.project, run.status, run.closedAt]), [["relaunched", "no dashboard", null]]);
+});
+
 test("#274: the artifact draws an Orchestrator fatal and a run's progress as words, never [object Object]", async () => {
   const { drawSnapshot } = await import("./hub/artifact-draw.mjs");
   const html = drawSnapshot({ at: "2026-10-19T10:00:00Z", runs: [{ project: "p", epic: "1", status: "running", progress: { total: 4, passed: 1 }, fatal: { at: "2026-10-19T09:00:00Z", message: "boom" } }] });
