@@ -718,7 +718,27 @@ test("a second end of one epic with a different failed task is judged afresh, no
   assert.equal(calls, 2, "a different failed task is a different question");
   assert.equal(second.reused ?? false, false);
   await end({ 1: "passed", 2: "pending", 3: "failed" }, ["3"]);
-  assert.equal(calls, 2, "the identical end is still one session");
+  assert.equal(calls, 3, "an epic end is never replayed, even with an identical signature");
+  rmSync(root, { recursive: true, force: true });
+});
+
+test("two epic_ended events with one signature both run the supervisor", async () => {
+  const root = tempRoot();
+  let calls = 0;
+  const runAgent = async ({ streamPath }) => {
+    calls += 1;
+    writeFileSync(streamPath, streamWith(agentText({ classification: "partial", recommendation: "wake-human" })));
+    return { status: 0, timedOut: false };
+  };
+  const end = () => onEpicEnded({
+    root, config: {}, consult: "always", runAgent, epic: { id: "489" }, halted: null,
+    tally: { status: "incomplete", reason: "tasks failed", passed: ["1"], failed: ["2"] },
+    run: { tasks: { 1: "passed", 2: "failed" } },
+  });
+  await end();
+  const second = await end();
+  assert.equal(calls, 2);
+  assert.equal(second.reused ?? false, false);
   rmSync(root, { recursive: true, force: true });
 });
 
