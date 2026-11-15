@@ -136,11 +136,35 @@ const MESSAGE = {
   not_answering: (t) => [`#${t.epic} dashboard not answering`, "warn", "Its recorded dashboard port does not answer; the run may still be going."],
 };
 
+// An ask that names its epic (`epic: {project, epic}`) closes by itself once
+// that epic's PR is merged or closed, or its run closed: an `answer` event, which
+// every reader of open asks already honours, marked `auto`. Idempotent: an
+// ask with an answer is skipped, so a second check-in appends nothing.
+export const closeFinishedAsks = (run, runs, env) => {
+  const lines = [];
+  for (const ask of run.events.filter((event) => event.kind === "ask" && event.epic?.epic != null)) {
+    const done = runs.find((r) => String(r.epic) === String(ask.epic.epic)
+      && (!ask.epic.project || !r.project || ask.epic.project === r.project)
+      && (r.finished || ["MERGED", "CLOSED"].includes(r.pr?.state)));
+    if (!done) continue;
+    const why = done.pr?.state === "MERGED" ? "merged" : done.pr?.state === "CLOSED" ? "closed" : "finished";
+    const event = appendEvent(run.dir, "answer", {
+      id: ask.id, text: `epic ${why}`, from: ask.from ?? null, auto: `epic ${why}`,
+    }, env, { unless: (events) => events.some((e) => e.kind === "answer" && e.id === ask.id) });
+    if (event) {
+      run.events.push(event);
+      lines.push(`COS: closed cos:${ask.id}: epic ${ask.epic.project ? `${ask.epic.project}#` : "#"}${ask.epic.epic} ${why}${done.pr?.number ? ` (PR #${done.pr.number})` : ""}`);
+    }
+  }
+  return lines;
+};
+
 /** Run one check-in against the open `run`. Returns the appended event. */
 export const checkin = async (run, env = process.env) => {
   const now = nowMs(env);
   const left = deploysLeft();
   const runs = (await peers(env)).filter((peer) => peer?.root).map((peer) => readRun(peer, { now, left }));
+  for (const line of closeFinishedAsks(run, runs, env)) console.log(line);
   const triggers = triggersOf(runs);
   const previous = run.events.filter((event) => event.kind === "checkin").at(-1);
   const seen = new Set((previous?.triggers ?? []).map(key));
