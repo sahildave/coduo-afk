@@ -286,7 +286,34 @@ the same PR; the coverage check catches orphans.
   case (simulators have no camera); it needs a device or an injected test feed.
 - **Platform priority:** 1. SwiftUI (macOS, then iOS); 2. React Native;
   3. web (Next.js, Astro, React); Tauri only for Gitsu. The pilot should be a
-  SwiftUI Mac app; mac-directory fits.
+  SwiftUI Mac app (see the pilot note below; mac-directory is a web app).
+
+## Example layout, fakes rule, Mac driver, pilot — 2026-11-15
+
+- **Next.js layout (example).** `src/app/` holds routes only.
+  `src/features/<f>/core/` is plain TypeScript with no React or Next imports,
+  and its `index.ts` is the public API. `src/features/<f>/ui/` holds the
+  components. `src/features/<f>/actions.ts` is the thin `"use server"` wrapper.
+  `src/adapters/` holds the real store and the in-memory store the prototype
+  uses. `src/shared/` is small. `src/cli/` imports only `features/*/core`.
+  The rules are enforced with eslint-plugin-boundaries or dependency-cruiser.
+- **Gitback and fakes:** gitback runs on emulate (the GitHub emulator) plus
+  MSW for Stripe, and has no test that runs the same checks against real
+  GitHub. Under the fake rules, that is the missing piece: keep emulate for
+  speed, and add one contract run against a real test repo and Stripe test
+  mode before merge to the shipping branch.
+- **agent-desktop (vercel-labs):** an accessibility-tree CLI for macOS,
+  Windows and Linux. It snapshots an app as JSON with refs, then clicks or
+  types by ref. It is headless by default (no pointer, no focus) and ships an
+  MCP server. It is the Mac version of agent-browser. On Sahil's own login,
+  the apps still open on his screen, so run it inside the Atlas helper login.
+  Atlas gives isolation; agent-desktop gives the driver. Not tested yet.
+- **Correction:** mac-directory is a Next.js web app, not a Mac app.
+- **Pilot candidates:** shareling already has the pattern: `SharelingKit`
+  (core), `SharelingCLI` (the `shareling` command and an MCP server on the same
+  core), and `SharelingCLITests`. One leak: `SharelingKit/Motion.swift` and
+  `Metal/SilverMetal.swift` import SwiftUI/AppKit. stage-manager has
+  `StageManagerKit` and tests but no CLI. Recommended pilot: shareling.
 
 ## Session log
 
