@@ -182,6 +182,16 @@ which is a different kind of CLI from the one Fable rejected (see Session log).
   steps (`agent.act`, `agent.assert`) that replay with no model calls, on web
   (Playwright) and mobile (agent-device); no desktop. Either can run the thin
   UI smoke test.
+- Gitback's `e2e/` on staging: 462 `getByRole` calls, 0 `agent.act` or
+  `agent.assert`, and many "re-record baselines" commits. Lanes wrote exact
+  selectors even with plain-language steps available, and screenshot
+  baselines cost steady upkeep.
+- Adversarial pass on the whole plan: it stays alive only if (1) every check
+  runs on every PR, (2) the CLI is a thin shell over the core, not a second
+  app, and (3) a CLI command exists only for features that change core state;
+  pure-UI features (open the Settings modal) get only the smoke test. The real
+  gain is forcing logic out of the screens into a testable core; the map
+  table is the part most likely to rot unless a coverage check enforces it.
 
 ## In your words
 
