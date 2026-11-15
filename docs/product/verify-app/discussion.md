@@ -295,7 +295,7 @@ the same PR; the coverage check catches orphans.
   and its `index.ts` is the public API. `src/features/<f>/ui/` holds the
   components. `src/features/<f>/actions.ts` is the thin `"use server"` wrapper.
   `src/adapters/` holds the real store and the in-memory store the prototype
-  uses. `src/shared/` is small. `src/cli/` imports only `features/*/core`.
+  uses. `src/shared/ui/` holds design-system components (Button) that any `ui/` may import; `src/shared/lib/` holds plain helpers (formatDate) that the core may import too. The core never imports `shared/ui/`. `src/cli/` imports only `features/*/core`.
   The rules are enforced with eslint-plugin-boundaries or dependency-cruiser.
 - **Gitback and fakes:** gitback runs on emulate (the GitHub emulator) plus
   MSW for Stripe, and has no test that runs the same checks against real
@@ -308,6 +308,7 @@ the same PR; the coverage check catches orphans.
   MCP server. It is the Mac version of agent-browser. On Sahil's own login,
   the apps still open on his screen, so run it inside the Atlas helper login.
   Atlas gives isolation; agent-desktop gives the driver. Not tested yet.
+- **Decision:** Mac UI tests run agent-desktop inside the Atlas helper login (Sahil, 2026-11-15). Not tested yet.
 - **Correction:** mac-directory is a Next.js web app, not a Mac app.
 - **Pilot candidates:** shareling already has the pattern: `SharelingKit`
   (core), `SharelingCLI` (the `shareling` command and an MCP server on the same
