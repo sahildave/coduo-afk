@@ -136,7 +136,8 @@ const runRow = (run, { since, at, chart, usageRows }) => {
   const planned = chart?.rows?.find((row) => row.runId === run.id) ?? null;
   // planChart read this run's log already when the plan names it.
   const actual = planned?.actual ?? readActuals({ root: run.root, since, now: at });
-  const closedAt = close?.lifecycle === "closed" ? close.closedAt ?? null : null;
+  // A relaunched epic keeps its last epicClose until it closes again; a live run is not closed.
+  const closedAt = !isLive(run) && close?.lifecycle === "closed" ? close.closedAt ?? null : null;
   const tasks = tasksOf(state);
   return {
     id: run.id,
