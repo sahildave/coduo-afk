@@ -13,7 +13,6 @@
   builder rules in `prompts/implementer.md` now say to stop only a pid the
   lane started itself.
 
-||||||| ceb83b2
 - **Every epic end gets a fresh supervisor decision (2026-11-15).**
   The cached answer for `epic_ended` could not see the head sha or the
   verifier result, so after a fix and re-review it replayed the old must-fix
