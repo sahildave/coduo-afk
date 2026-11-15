@@ -88,15 +88,12 @@ for every product (web, Mac, React Native, Tauri).
 
 ## Open questions
 
-- **Blocking:** in the CLI-first idea, do the CLI and the UI call the same
-  core functions, or is the CLI a separate build of the logic? Only a shared
-  core makes the CLI proof of the app.
-- Does the CLI run against fakes by default (emulators, mock store) or against
-  real services?
-- Is the CLI shipped to users, or internal only (agents, tests, later MCP)?
-- Which repo pilots it: mac-directory (busy, Mac, tests Atlas) or gitback
-  (half the work exists, but paused)?
-- Does any CI run the tests? Gitback's only workflow is the Cloudflare deploy.
+- Answered 2026-11-15: the CLI and UI call one shared core; tests run on fakes
+  at the external boundary only, real services at the final gate; the CLI is
+  internal (people, agents, tests, later MCP); the pilot is shareling; the gate
+  runs in the AFK lane while GitHub Actions minutes are out.
+- Open: the map's file and format. Proposal: `docs/feature-map.md`, one
+  markdown table, IDs shared with the Screen Gallery state IDs.
 
 ## Risks / unknowns
 
@@ -107,13 +104,26 @@ for every product (web, Mac, React Native, Tauri).
 
 ## Next steps
 
-- [ ] Answer the open questions on the CLI-first idea — this discussion
-- [ ] Close gitback PR #613 and move its one unique check (UI save, then the
-      fake GitHub's `main` is unchanged) into `e2e/edit.spec.ts` — /coduo-implement
-- [ ] Add a feature map table to the pilot repo — /coduo-implement
-- [ ] Point verifier Step 1d (`prompts/verifier.md:47-52`) at the feature map
-      and the repo's own suites instead of `.claude/skills/verify-*/features/`,
-      keeping the teeth test — /coduo-implement
+Rollout is pilot-first: one repo proves it, then the runner and skills change,
+then the other products. Each repo gets its own epic; there is no single
+cross-repo epic, because the runner runs one repo per epic.
+
+1. [ ] **Pilot epic, shareling** — /coduo-epic in shareling. Tickets: feature
+       map with IDs; coverage check (an ID with no test, a test with no ID);
+       fix the `SharelingKit` UI imports and add the folder/import rule; outcome
+       tests for the map rows that change data; a lane gate that runs them;
+       agent-desktop inside Atlas for one Mac UI smoke test. Done when one AFK
+       ticket names its IDs, the lane attaches the run, and the verifier's
+       teeth test goes red on a planted bug.
+2. [ ] **Runner epic, coduo-afk** — after the pilot. Verifier Step 1d reads the
+       feature map and the repo's suites instead of `.claude/skills/verify-*/`;
+       tickets carry journey IDs; closeout adds or tightens a map row.
+3. [ ] **Skills** — after the pilot, from what it taught: `coduo-tickets`
+       (name IDs), `coduo-product-prototype` (in-memory store implements the
+       core interface; gallery states come from the core), `setup-coduo-toolchain`
+       (folder rule, coverage check per platform).
+4. [ ] **Rollout epics:** Futari (split `PeerLink`), a React Native app, then
+       gitback (close PR #613, move its check into `e2e/edit.spec.ts`).
 
 ## Adversarial take — 2026-11-15
 
