@@ -323,6 +323,45 @@ test("every role's payload names the role in env, for hooks outside the repo to 
   }
 });
 
+test("a direct Claude agent does not inherit the launching Claude session's environment", () => {
+  // A runner started from a Claude Desktop session passed CLAUDE_CODE_ENTRYPOINT
+  // =claude-desktop and the rest to every lane, which then loaded the Desktop
+  // tool set: a one-turn call opened at 43.4k instead of 29.7k (15 Nov).
+  const dir = mkdtempSync(join(tmpdir(), "afk-hostenv-"));
+  try {
+    const fake = join(dir, "claude");
+    writeFileSync(fake, "#!/bin/sh\nenv\n");
+    chmodSync(fake, 0o755);
+    writeFileSync(join(dir, "p.md"), "");
+    const stream = join(dir, "s.jsonl");
+    const command = buildAgentCommand(
+      { command: fake, model: "sonnet" },
+      { nodeBin: "", promptPath: join(dir, "p.md"), streamPath: stream, taskId: "t1", processName: "afk-t1" },
+    );
+    execFileSync("sh", ["-c", command], {
+      env: {
+        PATH: process.env.PATH,
+        HOME: process.env.HOME,
+        CLAUDECODE: "1",
+        CLAUDE_CODE_ENTRYPOINT: "claude-desktop",
+        CLAUDE_CODE_SESSION_ID: "host",
+        CLAUDE_AGENT_SDK_VERSION: "0.3",
+        MCP_CONNECTION_NONBLOCKING: "true",
+        CLAUDE_CODE_OAUTH_TOKEN: "keep",
+        CLAUDE_CONFIG_DIR: "/keep",
+        ANTHROPIC_BASE_URL: "https://keep",
+      },
+    });
+    const env = readFileSync(stream, "utf8");
+    for (const gone of ["CLAUDECODE=", "CLAUDE_CODE_ENTRYPOINT=", "CLAUDE_CODE_SESSION_ID=", "CLAUDE_AGENT_SDK_VERSION=", "MCP_CONNECTION_NONBLOCKING="])
+      assert.doesNotMatch(env, new RegExp(`^${gone}`, "m"), gone);
+    for (const kept of ["CLAUDE_CODE_OAUTH_TOKEN=keep", "CLAUDE_CONFIG_DIR=/keep", "ANTHROPIC_BASE_URL=https://keep", "RUNNER_TASK_ID=t1"])
+      assert.match(env, new RegExp(`^${kept}$`, "m"), kept);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // 4. --strict-mcp-config and --no-chrome
 // ---------------------------------------------------------------------------

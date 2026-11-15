@@ -1329,6 +1329,14 @@ const codexAgentCommand = (agent, paths) => {
 // reads the task prompt from stdin, and `--output-format stream-json` emits
 // one JSON object per line. `--verbose` is required by the CLI for streaming
 // JSON under `-p`. Byte-for-byte what it was before the backend split.
+// The launching Claude session's own variables. A runner started from a Claude
+// Desktop session (CLAUDE_CODE_ENTRYPOINT=claude-desktop and ~30 more) handed
+// them to every lane, which then loaded the Desktop tool set: the same one-turn
+// call opened at 43.4k with them and 29.7k without (15 Nov). Auth and provider
+// variables stay, and the runner's own come through `--settings` env.
+const DROP_HOST_SESSION_ENV =
+  `unset $(env | awk -F= '/^(CLAUDECODE|CLAUDE_CODE_|CLAUDE_AGENT_SDK_|CLAUDE_PID=|CLAUDE_PLUGIN_|CLAUDE_EFFORT=|CLAUDE_PREVIEW_|MCP_CONNECTION_NONBLOCKING=|MCP_SERVER_CONNECTION_BATCH_SIZE=)/ && !/^CLAUDE_CODE_(OAUTH_TOKEN|USE_|API_KEY)/ {print $1}');`;
+
 const claudeAgentCommand = (agent, paths) => {
   const { nodeBin, promptPath, streamPath, taskId, processName } = paths;
   const access = agent.bypassPermissions
@@ -1361,7 +1369,7 @@ const claudeAgentCommand = (agent, paths) => {
   // whose one-word reply needs none, sets it.
   const isolate = ` --strict-mcp-config --no-chrome${agent.disableSlashCommands ? " --disable-slash-commands" : ""}`;
   return (
-    `${launchPrefix(nodeBin, taskId, processName)}${shellQuote(agent.command)} -p --output-format stream-json --verbose` +
+    `${DROP_HOST_SESSION_ENV} ${launchPrefix(nodeBin, taskId, processName)}${shellQuote(agent.command)} -p --output-format stream-json --verbose` +
     `${access}${effort} --model ${shellQuote(agent.model)}${isolate}${settings}${append}${resume}` +
     ` < ${shellQuote(promptPath)} > ${shellQuote(streamPath)} 2>&1`
   );
