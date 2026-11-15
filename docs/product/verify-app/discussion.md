@@ -59,6 +59,16 @@ for every product (web, Mac, React Native, Tauri).
 - **Keep the teeth test and the repro rule.** Break one line and confirm the
   test goes red; an explore finding counts only when a repro test fails.
   Because: these were the parts that proved real.
+- **The CLI and the UI call the same core.** Sahil confirmed 2026-11-15
+  ("yes exactly"). Because: a CLI with its own copy of the logic proves nothing
+  about the app. The word for the shared logic is **the core**. This rule
+  belongs in the skill used for every new feature and in
+  `coduo-product-prototype` (which skill, still open).
+- **Who writes the checks:** the lane that adds or changes a feature writes
+  its CLI command, outcome test, UI smoke test and map row in the same PR. The
+  verifier runs them and breaks one line (teeth test). Closeout turns a lesson
+  into a new or tighter row. A new area from scratch starts with the CLI
+  command and the map row in the first ticket, before the screens.
 - **Lanes may edit the tests in the same PR as the UI change.** Because:
   locking the journeys under `.claude/` guaranteed they went stale; the teeth
   test guards against a lane weakening one.
@@ -164,6 +174,14 @@ which is a different kind of CLI from the one Fable rejected (see Session log).
   ([10:37], `app aria-click`) to save agent tokens; Sahil's is a no-UI app
   CLI over the real logic (`gitback claim <repo>`). The second is close to
   Fable's outcome-test layer with a command line on top.
+- "DuoCam agent" = the futari session "Preview lag on second device" (futari,
+  a two-iPhone camera). Futari's core: pairing, the live link, shot saving,
+  the Futari album; its CLI would run those on a Mac with no camera UI.
+- `e2e` (e2e.tester.army) was not used by verify-gitback, which was plain
+  Playwright plus agent-browser for explore. `e2e` adds natural-language agent
+  steps (`agent.act`, `agent.assert`) that replay with no model calls, on web
+  (Playwright) and mobile (agent-device); no desktop. Either can run the thin
+  UI smoke test.
 
 ## In your words
 
