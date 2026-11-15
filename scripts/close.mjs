@@ -13,7 +13,7 @@
 // `afk fate`, and `must-fix-cleared` judges the re-review against the fates.
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { atomicWrite, configPath, currentRepo, ensureDir, isMainModule, loadConfig, normalizeId } from "./lib.mjs";
+import { atomicWrite, configPath, currentRepo, ensureDir, headSha, isMainModule, loadConfig, normalizeId } from "./lib.mjs";
 import { redoCloseRefusal, runAuto as runAutoDefault } from "./auto.mjs";
 
 /**
@@ -42,7 +42,34 @@ const loadEpicDefault = async ({ repo, number, config }) => {
  * report copied beside it, as `runAuto`'s own redo does; the fixer's record and
  * report stay as the pass left them, so the next redo is review-only too.
  */
-const reviewOnly = async ({ root, state, config, dag, epicBody, epicBase, number, verify }) => {
+/**
+ * The runner's checks over the current head, run here because the verifier's
+ * prompt says the runner ran them and the verifier must not. Never throws: a
+ * gate that could not run is an `unavailable` record the prompt says so about.
+ */
+const gateDefault = async ({ root, config, number }) => {
+  try {
+    const { runCloseoutGate } = await import("./fixer.mjs");
+    const { runBaselineChecks, DEFAULT_BASELINE_TIMEOUT_MS } = await import("./auto.mjs");
+    return await runCloseoutGate({
+      root,
+      config,
+      epicId: number,
+      headBefore: headSha(root),
+      force: true,
+      runChecks: ({ commands, cwd }) => runBaselineChecks({
+        commands,
+        cwd,
+        timeoutMs: config.baselineTimeoutMs ?? DEFAULT_BASELINE_TIMEOUT_MS,
+        label: "closeout review gate check",
+      }),
+    });
+  } catch (error) {
+    return { status: "unavailable", problem: error.message, head: null, fixSha: null };
+  }
+};
+
+const reviewOnly = async ({ root, state, config, dag, epicBody, epicBase, number, verify, gate: runGate }) => {
   const { verifierDecision, verifierReportPath } = await import("./verifier.mjs");
   const close = state.epicClose;
   const stamp = new Date().toISOString();
@@ -57,7 +84,10 @@ const reviewOnly = async ({ root, state, config, dag, epicBody, epicBase, number
   close.redos.push({ verifier: close.verifier ?? null, fixer: close.fixer ?? null, fixGate: close.fixGate ?? null, reports, supersededAt: stamp, reviewOnly: true });
   const statePath = resolve(root, ".afk", "state.json");
   atomicWrite(statePath, `${JSON.stringify(state, null, 2)}\n`);
-  const report = await verify({ root, config, dag, epicBody, branch: dag.branch ?? null, baseBranch: epicBase, outstanding: [], reuse: true });
+  const gate = await runGate({ root, config, number });
+  close.fixGate = gate;
+  atomicWrite(statePath, `${JSON.stringify(state, null, 2)}\n`);
+  const report = await verify({ root, config, dag, epicBody, branch: dag.branch ?? null, baseBranch: epicBase, outstanding: [], gate, reuse: true });
   const decision = report ? verifierDecision(report) : null;
   close.verifier = report && report.status !== "failed"
     ? {
@@ -86,6 +116,7 @@ const reviewOnly = async ({ root, state, config, dag, epicBody, epicBase, number
 export const cli = async (args = process.argv.slice(2), root = process.cwd(), {
   loadEpic = loadEpicDefault,
   verify = null,
+  gate = gateDefault,
   runAuto = runAutoDefault,
 } = {}) => {
   const flag = (name) => args.find((arg) => arg.startsWith(`--${name}=`))?.slice(name.length + 3) ?? null;
@@ -130,7 +161,7 @@ export const cli = async (args = process.argv.slice(2), root = process.cwd(), {
   const epicBase = flag("base") || state?.epicBase || "main";
   if (pass) {
     const review = verify ?? (await import("./verifier.mjs")).runVerifier;
-    return reviewOnly({ root, state, config, dag, epicBody, epicBase, number, verify: review });
+    return reviewOnly({ root, state, config, dag, epicBody, epicBase, number, verify: review, gate });
   }
   return runAuto({
     config,

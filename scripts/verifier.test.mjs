@@ -2459,3 +2459,12 @@ test("the verifier prompt cites the tip gate record and never tells the review t
   const none = rolePrompt(roleFor("verifier"), null, { epic: { id: "9" }, criteria: [], tasks: [] });
   assert.doesNotMatch(none, /Step 1b/);
 });
+
+test("a gate that could not run is not described to the verifier as checks the runner ran", () => {
+  const gate = { status: "unavailable", head: "abc1234", problem: "gate lock timed out" };
+  const prompt = rolePrompt(roleFor("verifier"), null, { epic: { id: "9" }, criteria: [], tasks: [], gate });
+  assert.doesNotMatch(prompt, /already ran the project's checks/);
+  assert.match(prompt, /could not run the project's checks over `abc1234` \(gate lock timed out\)/);
+  assert.match(prompt, /`unknown`/);
+  assert.doesNotMatch(prompt, /\{\{|\}\}/, "no section marker leaks");
+});

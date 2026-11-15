@@ -32,6 +32,9 @@ the DAG in code, and the only thing an agent can move is `completed` →
    fix pass leaves out".
 3. **Fix gate** — if that pass committed anything, the project's check chain is
    re-run over the commit it left. `runCloseoutGate` in `scripts/fixer.mjs`.
+   The same chain also runs over the tip before step 1, and the verifier cites
+   that record instead of running the checks in its sandbox; with no fix commit,
+   this step reuses it.
 4. **PR render** — `ensureDraftPr` rewrites the epic's draft PR body from run
    state, now carrying the review. `scripts/pr.mjs`.
 5. **Run-account comment** — the rendered closeout plus what the fixer changed,
@@ -52,8 +55,8 @@ already passed, so its output is the newest and least-verified code on the
 branch. In an epic that is a one-time cost at the end; in wave mode the next
 wave's baseline normally covers it within minutes, but the LAST wave of a run
 has no next wave. quillnote wave-34 (2026-09-04) shipped `18cdd44` as the tip
-with the wave's five gates recorded two commits below it. The chain only re-runs
-when HEAD actually moved, which most closeouts do not do.
+with the wave's five gates recorded two commits below it. After the fixer, the
+chain only re-runs when HEAD actually moved.
 
 ## When the review comes back as prose
 
@@ -131,10 +134,9 @@ staging or a deployed URL, or the network. Those words win over any mention of
 the review's own sandbox. An `unknown` with no reason at all is one the review
 never answered, and stays out. This fails open: a wrong queue costs one fixer
 check that reports it could not run, while a wrong drop loses a teeth check
-nobody else will run. The fixer runs the check. If it holds, the closeout shows the
-criterion as met, in the stage header's count and in the criteria table, with
-the output and "not re-reviewed" on its face; if it fails, it becomes an
-ordinary finding.
+nobody else will run. The fixer runs the check. If it holds, the closeout prints the fixer's
+"already met" claim on its own line; the criterion stays `unknown` until a
+review calls it met. If it fails, it becomes an ordinary finding.
 
 Every step is wrapped. A verifier that cannot run leaves a `skipped` string; a
 fix pass that throws leaves every finding for you; a GitHub call that fails is a

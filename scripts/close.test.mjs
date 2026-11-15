@@ -73,12 +73,15 @@ test("S7: a redo after the fix pass re-reviews the head and runs no fixer", asyn
   writeFileSync(fixerReportPath(root, "545"), JSON.stringify({ version: 1, status: "ok", reviewHead: first, items: [] }));
   const fixerBefore = readFileSync(fixerReportPath(root, "545"), "utf8");
   const reviews = [];
+  const gates = [];
+  const tipGate = { status: "passed", head: second, checks: ["true"] };
   const lines = [];
   const log = console.log;
   console.log = (line) => lines.push(String(line));
   let code;
   try {
     code = await cli(["--redo", "545", "--repo=acme/app"], root, {
+      gate: async (args) => { gates.push(args); return tipGate; },
       loadEpic: async () => ({ dag: { epic: { id: "545", title: "x" }, branch: "feat/545", tasks: [] }, epicBody: "body", epicBase: "main" }),
       verify: async (args) => {
         reviews.push(args);
@@ -94,6 +97,10 @@ test("S7: a redo after the fix pass re-reviews the head and runs no fixer", asyn
   assert.equal(code, 0, lines.join("\n"));
   assert.equal(reviews.length, 1, "one review ran");
   assert.equal(reviews[0].baseBranch, "main");
+  // The prompt no longer tells the verifier to run the checks, so the re-review
+  // must get the runner's gate over the tip, as a close's review does.
+  assert.equal(gates.length, 1, "the tip is gated before the re-review");
+  assert.deepEqual(reviews[0].gate, tipGate, "the re-review cites the tip gate");
   const close = JSON.parse(readFileSync(join(root, ".afk", "state.json"), "utf8")).epicClose;
   assert.equal(close.verifier.head, second);
   assert.equal(close.verifier.afterFixPass, true);

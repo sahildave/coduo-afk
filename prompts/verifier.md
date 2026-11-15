@@ -37,8 +37,6 @@ Then two lists the schema names:
 File what you find as `findings` with `axis: "reach"`, alongside the two lists.
 
 {{#gateBlock}}
-Step 1b — The runner already ran the project's checks over this tip, outside your sandbox. Do not run them yourself: cite this record as the evidence for any criterion a check settles, and treat a failed command as a finding.
-
 {{gateBlock}}
 {{/gateBlock}}
 

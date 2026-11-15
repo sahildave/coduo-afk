@@ -362,12 +362,13 @@ export const verifierPrompt = ({
 
 const renderGateBlock = (gate) => {
   if (!gate || !gate.status || gate.status === 'no_commit') return '';
-  const commands = (gate.checks ?? []).map((command) => `- \`${command}\``).join('\n');
-  if (gate.status === 'passed') return `Gate over \`${gate.head}\`: **passed**, every command exited 0.\n${commands}`;
-  if (gate.status === 'failed') {
-    return `Gate over \`${gate.head}\`: **failed** — \`${gate.failingCommand}\` ${gate.timedOut ? 'timed out' : `exited ${gate.failingCode ?? 'non-zero'}`}.\n${commands}\n\n\`\`\`\n${gate.output ?? ''}\n\`\`\``;
+  if (gate.status !== 'passed' && gate.status !== 'failed') {
+    return `Step 1b — The runner could not run the project's checks over \`${gate.head ?? 'this tip'}\` (${gate.problem ?? gate.status}). Do not run them yourself: a criterion only a check settles is \`unknown\`, and say in \`summary\` that the checks did not run.`;
   }
-  return `Gate over \`${gate.head}\`: **did not run** — ${gate.problem ?? gate.status}.`;
+  const intro = "Step 1b — The runner already ran the project's checks over this tip, outside your sandbox. Do not run them yourself: cite this record as the evidence for any criterion a check settles, and treat a failed command as a finding.\n\n";
+  const commands = (gate.checks ?? []).map((command) => `- \`${command}\``).join('\n');
+  if (gate.status === 'passed') return `${intro}Gate over \`${gate.head}\`: **passed**, every command exited 0.\n${commands}`;
+  return `${intro}Gate over \`${gate.head}\`: **failed** — \`${gate.failingCommand}\` ${gate.timedOut ? 'timed out' : `exited ${gate.failingCode ?? 'non-zero'}`}.\n${commands}\n\n\`\`\`\n${gate.output ?? ''}\n\`\`\``;
 };
 
 /**

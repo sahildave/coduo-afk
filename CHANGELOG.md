@@ -2,6 +2,15 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **`afk close --redo` re-reviews with the tip gate, and an unrun gate says so (2026-11-15).**
+  The review-only redo after a fix pass ran the verifier with no gate record,
+  and the prompt no longer tells it to run the checks, so it reviewed with no
+  check evidence. It now runs the gate over the head first and passes the
+  record. A gate that could not run (lock timeout, `baselineChecks: []`) no
+  longer appears under "the runner already ran the project's checks"; the
+  verifier is told the checks did not run and to leave check-only criteria
+  `unknown`. No config change.
+
 - **A failed retry reset fails the lane, not the run (2026-11-15).**
   `resetForRetry` rethrew any worktree-reset error that was not a full disk,
   ending the orchestrator on one lane's bad worktree. It now leaves the lane
