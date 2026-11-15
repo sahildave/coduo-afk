@@ -184,7 +184,9 @@ export const scopedRuns = (runs, cos) => {
     : projects.has(String(run.epic)) && (!projects.get(String(run.epic)) || projects.get(String(run.epic)) === run.project));
   const roots = new Set((cos.meta?.adopted ?? []).map((entry) => entry?.root).filter(Boolean).map((root) => resolve(root)));
   const plan = latestPlan(cos.events ?? [])?.epics ?? [];
-  return runs.filter((run) => inEpics(run)
+  // A live run always shows: an epic launched outside this chief of staff run
+  // is still building on this machine, and hiding it hides real work.
+  return runs.filter((run) => isLive(run) || inEpics(run)
     || (run.root && roots.has(resolve(run.root)))
     || plan.some((row) => String(row.epic) === String(run.epic) && (!row.project || row.project === run.project)));
 };

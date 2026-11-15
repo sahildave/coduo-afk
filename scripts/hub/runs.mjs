@@ -32,6 +32,7 @@
 // place of the range, so a test exercises the real probe on its own ports).
 import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 import { discoverDashboards } from "../dashboard-process.mjs";
 import { cosRoot, nowMs, readEvents } from "../cos/store.mjs";
@@ -81,6 +82,9 @@ const startedRoots = (env) => {
 
 /** Record the checkout root of a run that has started. Throws on a failed write. */
 export const recordStartedRoot = (root, env = process.env) => {
+  // A checkout in the temp dir is a test fixture, never a real epic; with no
+  // AFK_COS_ROOT it would land in the real store and never leave it.
+  if (!env.AFK_COS_ROOT && real(root).startsWith(real(tmpdir()))) return;
   const roots = startedRoots(env);
   if (roots.some((known) => real(known) === real(root))) return;
   mkdirSync(cosRoot(env), { recursive: true });

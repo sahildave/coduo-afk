@@ -65,6 +65,8 @@ test("scopedRuns reads owner/repo#n epics and epicRefs (#49)", async () => {
   assert.equal(scopedRuns(runs, bare).length, 2, "a bare number still matches any project");
   const refs = { meta: { epics: ["x#2"], epicRefs: [{ project: "sticky-notes", epic: 3 }] }, events: [] };
   assert.deepEqual(scopedRuns(runs, refs).map((r) => r.project + r.epic), ["sticky-notes3"]);
+  const live = [...runs, { project: "gitsu", epic: "1438", status: "running" }];
+  assert.deepEqual(scopedRuns(live, refs).map((r) => r.project + r.epic), ["sticky-notes3", "gitsu1438"], "a live run outside the scope still shows");
 });
 
 test("a snapshot older than 90 minutes draws the stale banner; a fresh one does not", async () => {
@@ -73,4 +75,20 @@ test("a snapshot older than 90 minutes draws the stale banner; a fresh one does 
   const at = (min) => new Date(now - min * 60_000).toISOString();
   assert.match(drawSnapshot({ at: at(360), runs: [] }, { now }), /This page is 6 h old\. The chief of staff has stopped updating it\./);
   assert.doesNotMatch(drawSnapshot({ at: at(30), runs: [] }, { now }), /has stopped updating/);
+});
+
+test("a temp-dir root is not recorded when AFK_COS_ROOT is unset (test fixtures)", async () => {
+  const { recordStartedRoot } = await import("./hub/runs.mjs");
+  const { mkdtempSync, existsSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const home = mkdtempSync(join(tmpdir(), "afk-started-home-"));
+  const root = mkdtempSync(join(tmpdir(), "afk-epic-"));
+  // HOME points the default store into a temp dir, so a regression cannot touch the real one.
+  const env = { HOME: home };
+  const prev = process.env.HOME; process.env.HOME = home;
+  try {
+    recordStartedRoot(root, env);
+    assert.equal(existsSync(join(home, ".afk-claude", "cos", "started-roots.json")), false);
+  } finally { process.env.HOME = prev; }
 });
