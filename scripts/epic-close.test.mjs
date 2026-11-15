@@ -81,6 +81,25 @@ test("an epic with every task passed and no gate is complete", () => {
   assert.equal(epicOutcome(dag, stateOf({ 204: "passed", 205: "passed" })).status, "complete");
 });
 
+test("the complete reason claims accepted gates only when the epic had gates", () => {
+  const plain = epicOutcome(dagOf(task("204")), stateOf({ 204: "passed" }));
+  assert.equal(plain.status, "complete");
+  assert.doesNotMatch(plain.reason, /gate/);
+  const gated = epicOutcome(dagOf(task("211", { gateAfter: true })), (() => {
+    const state = stateOf({ 211: "passed" });
+    recordGateAcceptance(state, { dag: dagOf(task("211", { gateAfter: true })), id: "211" });
+    return state;
+  })());
+  assert.match(gated.reason, /every gate was accepted/);
+});
+
+test("the closeout outcome line carries the verifier recommendation", () => {
+  const state = closedState();
+  state.epicClose.verifier = { recommendation: "must-fix" };
+  const markdown = renderCloseout(dagOf(task("204")), state, null);
+  assert.match(markdown, /Outcome: `completed_with_findings`\*\* — .*recommends `must-fix`/);
+});
+
 test("a passed `gate: after` task holds the epic at awaiting_acceptance", () => {
   const dag = dagOf(task("204"), task("211", { gateAfter: true, dependsOn: ["204"] }));
   const state = stateOf({ 204: "passed", 211: "passed" });
@@ -1763,7 +1782,7 @@ test("an unparseable review whose prose was recovered does not claim nothing bel
   assert.match(header, /1\. Verifier \| ❌ \*\*no usable report\*\* \(`unparseable`\) \| .* — no structured review; 1 finding\(s\) below were recovered from its prose/);
 });
 
-test("a check-only criterion the fixer found met renders as met in the closeout, with its output", () => {
+test("a check-only criterion the fixer calls already met stays unknown, with the claim on its own line", () => {
   const dag = dagOf(task("818"));
   const state = stateOf({ 818: "passed" }, { outcome: "completed", lifecycle: "closed" });
   const review = report({
@@ -1776,24 +1795,10 @@ test("a check-only criterion the fixer found met renders as met in the closeout,
     deferred: [{ id: "F1", title: "break the hint, watch it fail", reason: "already met — `npm test -- hint` failed 1 with the span removed", kind: "no_op" }],
   };
   const markdown = renderCloseout(dag, state, review, fix);
-  assert.match(markdown, /\| ✅ \| break the hint, watch it fail \| #818 \| met by the closeout fix pass, not re-reviewed: `npm test -- hint` failed 1/);
-});
-
-test("the stage header counts a check-only criterion the fixer found met, as the body does", () => {
-  const dag = dagOf(task("818"));
-  const state = stateOf({ 818: "passed" }, { outcome: "completed", lifecycle: "closed" });
-  const review = report({
-    criteria: [{ id: "818.3", taskId: "818", source: "task", text: "break the hint", verdict: "unknown", evidence: "mutation denied in this session" }],
-  });
-  const fix = {
-    status: "ok",
-    items: [{ id: "F1", title: "break the hint", checkOnly: true, criterionId: "818.3" }],
-    fixed: [],
-    deferred: [{ id: "F1", title: "break the hint", reason: "already met — `npm test` failed 1 with it broken", kind: "no_op" }],
-  };
-  const markdown = renderCloseout(dag, state, review, fix);
-  assert.match(markdown, /1\. Verifier .* 1\/1 criteria met/);
-  assert.doesNotMatch(markdown, /0\/1 criteria met/);
+  assert.doesNotMatch(markdown, /met by the closeout fix pass/);
+  assert.doesNotMatch(markdown, /\| ✅ \| break the hint, watch it fail/);
+  assert.match(markdown, /0\/1 criteria met/);
+  assert.match(markdown, /already met — `npm test -- hint` failed 1 with the span removed/);
 });
 
 test("a minors checklist the moved branch keeps from being retried is logged as still owed", async () => {

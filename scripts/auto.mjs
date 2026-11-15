@@ -96,7 +96,7 @@ import {
   verifierReportCounts,
 } from "./verifier.mjs";
 import { noteLaneDefect, recordIntegrationDefect, recordLaneDefect, renderMidRunDefects } from "./defects.mjs";
-import { lessonCounts, partitionDeferred, partitionFixed, readCloseoutGate, renderMinorsComment, renderUnpassedLanes, unpassedLanes, unpassedTaskIds, withCheckedCriteria } from "./fixer.mjs";
+import { lessonCounts, partitionDeferred, partitionFixed, readCloseoutGate, renderMinorsComment, renderUnpassedLanes, unpassedLanes, unpassedTaskIds } from "./fixer.mjs";
 import { ARTEFACT_PREFIXES } from "./sweep.mjs";
 import { appendCloseRow, appendLaunchRow, recordGate } from "./measure.mjs";
 import { GATE_HEARTBEAT_MS, gateWaitPath, quietHostLoad, readGateHolder, waitForQuietHost, withGateLock } from "./gate-lock.mjs";
@@ -867,19 +867,15 @@ export const renderStageHeader = (close = {}, report = null, fixReport = null) =
 
 // Neither report is defaulted: a nullish one is handled below, and an arity of 4
 // is what tells a caller (and a probe) that this renders a RECONCILED closeout.
-export const renderCloseout = (dag, state, rawReport, fixReport) => {
+export const renderCloseout = (dag, state, report, fixReport) => {
   const close = state.epicClose ?? {};
-  // One report for the whole document: a check-only criterion the fix pass
-  // found met is met in the stage header AND the criteria table (#143), or the
-  // same closeout says 0/1 in one place and 1/1 in the other.
-  const report = withCheckedCriteria(rawReport, fixReport);
   const label = dag.epic?.title ?? dag.epic?.id ?? state.epic ?? "epic";
   const mark = { passed: "✅", "no-op": "✅", failed: "❌", integration_failed: "❌", blocked: "⛔", [AWAITING_ACCEPTANCE]: "⏳" };
   const gates = gateAfterTasks(dag);
   const lines = [
     `# Epic closeout — ${label}`,
     "",
-    `**Outcome: \`${close.outcome ?? "?"}\`** — ${close.reason ?? ""}`.trim(),
+    `**Outcome: \`${close.outcome ?? "?"}\`** — ${close.reason ?? ""}${close.verifier?.recommendation ? `. The closeout review recommends \`${close.verifier.recommendation}\`.` : ""}`.trim(),
     "",
     `Branch \`${dag.branch ?? state.branch ?? "?"}\`. Closed ${close.closedAt ?? "?"}.`,
     "",
@@ -941,7 +937,6 @@ export const renderCloseout = (dag, state, rawReport, fixReport) => {
   const defects = renderMidRunDefects(state);
   if (defects) lines.push("", defects);
   lines.push("", report
-    // A check-only criterion the fix pass found met renders as met (#143).
     ? tickFixedMustFix(renderVerifierMarkdown(report), fixReport)
     : `## Verifier\n\n_Did not run: ${close.verifier?.skipped ?? "no reason recorded"}._`);
   // One line so the reader knows a fix pass happened at all — the deferrals and
@@ -967,6 +962,11 @@ export const renderCloseout = (dag, state, rawReport, fixReport) => {
       // "0 left for you" is false while findings the pass never queued are open.
       + `${fixReport.notQueued ? `; ${fixReport.notQueued} minor finding(s) never queued and still open` : ""}._`,
     );
+    // The fixer's own word on a criterion the verifier left `unknown`, as the
+    // fixer's claim on its own line; the verdict above stays the verifier's.
+    const checkOnlyIds = new Set((fixReport.items ?? []).filter((item) => item.checkOnly).map((item) => item.id));
+    const claims = partitionDeferred(fixReport).noOp.filter((entry) => checkOnlyIds.has(entry.id) && /^already met\b/i.test(entry.reason ?? ""));
+    for (const entry of claims) lines.push("", `_Fixer claim, not re-reviewed — ${entry.title ?? entry.id}: ${entry.reason}_`);
   }
   return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`;
 };
@@ -3078,12 +3078,16 @@ export const runAuto = async ({
     stopRecordedAgent({ activeWorkers: { [taskId]: state.activeWorkers[taskId] } }, `builder ${taskId}`);
     clearWorkerPid(state, taskId);
     const taskRuntime = state.tasks[taskId];
-    const line = diskFullLine(error);
     taskRuntime.lifecycle = "infra_failed";
-    taskRuntime.diskFull = { at: new Date().toISOString(), where, message: line };
-    say(
-      `AUTO: builder ${taskId} hit a full disk during ${where} — ${line}. Left unmarked (infra_failed); free space, then \`afk reset ${taskId}\`.`,
-    );
+    if (isDiskFull(error)) {
+      const line = diskFullLine(error);
+      taskRuntime.diskFull = { at: new Date().toISOString(), where, message: line };
+      say(
+        `AUTO: builder ${taskId} hit a full disk during ${where} — ${line}. Left unmarked (infra_failed); free space, then \`afk reset ${taskId}\`.`,
+      );
+    } else {
+      say(`AUTO: builder ${taskId} failed during ${where} — ${error.message}. Left unmarked (infra_failed); fix it, then \`afk reset ${taskId}\`.`);
+    }
     recordOutcome(taskId, true, 0, { neverReachedApi: true });
     saveState(state);
   };
@@ -3099,7 +3103,8 @@ export const runAuto = async ({
       });
       return true;
     } catch (error) {
-      if (!isDiskFull(error)) throw error;
+      // Any reset failure is infra, not the ticket and not a reason to end the
+      // run; a full disk additionally keeps its `diskFull` record.
       failLaneOnFullDisk(taskId, error, "the retry's worktree reset");
       return false;
     }
@@ -3656,7 +3661,7 @@ export const runAuto = async ({
    * block one either — a review that could halt the runner would be a gate that
    * writes to the thing it gates, which docs/epic-schema.md rejects.
    */
-  const runCloseoutVerifier = async (outstanding) => {
+  const runCloseoutVerifier = async (outstanding, gate = null) => {
     if (!state.epic?.id && !state.epic) {
       return { report: null, skipped: "this run has no epic id (the `--dag=` seam), so there is nothing to review against" };
     }
@@ -3668,6 +3673,7 @@ export const runAuto = async ({
         branch: dag.branch ?? baseBranch,
         baseBranch: epicBase,
         outstanding,
+        gate,
         reuse: true,
       });
       // A reused report is an earlier session's review; its switch was logged then.
@@ -3725,7 +3731,10 @@ export const runAuto = async ({
       // `reuse: true` inside: a review already on disk for this epic is
       // returned rather than re-run, so parking on acceptance and then closing
       // costs one review, not two.
-      ({ report, skipped } = await runCloseoutVerifier(outstanding));
+      // The checks run here, over the tip, where they can bind ports and write
+      // `.build`; the verifier cites the record instead of re-running them.
+      const gate = await gateCloseoutFix(headSha(root), { force: true });
+      ({ report, skipped } = await runCloseoutVerifier(outstanding, gate));
       decision = report ? verifierDecision(report) : null;
     } catch (error) {
       report = null;
@@ -3820,7 +3829,7 @@ export const runAuto = async ({
    * stated fail direction on `runCloseoutGate`. The gate reports; the DAG and
    * the verifier still decide.
    */
-  const gateCloseoutFix = async (headBefore) => {
+  const gateCloseoutFix = async (headBefore, { force = false } = {}) => {
     let gate = null;
     try {
       const { runCloseoutGate } = await import("./fixer.mjs");
@@ -3833,6 +3842,7 @@ export const runAuto = async ({
         config,
         epicId: normalizeId(dag.epic?.id ?? null),
         headBefore,
+        force,
         say,
         // The same chain `integrate.mjs` re-runs after a merge, and the same one
         // the run's own baseline ran: `baselineChecks ?? defaultChecks`.

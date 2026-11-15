@@ -325,7 +325,7 @@ const renderReachBlock = (reach) => {
  */
 export const verifierPrompt = ({
   epic = {}, epicBody = null, branch = null, baseBranch = 'main', criteria = [], tasks = [],
-  checks = [], schema = '', skills = null, projectRoot = null, reach = null,
+  gate = null, schema = '', skills = null, projectRoot = null, reach = null,
 }) => promptFor('verifier', projectRoot, {
   phases: phaseLine('verifier'),
   epic: { id: epic.id ?? '?' },
@@ -351,14 +351,25 @@ export const verifierPrompt = ({
   // reads it. `null` when the runner could not compute it — and that says so
   // out loud rather than rendering an empty section that reads as "clean".
   reachBlock: renderReachBlock(reach),
-  // The project's own gates, named rather than guessed at — the fixer gets the
-  // same list. Blank when the project declares none, and the section around it
-  // in the template renders nothing.
-  checks: checks.map((check) => `- \`${check}\``).join('\n'),
+  // The runner's own gate over this tip, cited rather than re-run: the review
+  // sandbox cannot bind ports, write `.build` or reach the network. Blank when
+  // no gate ran, and the section around it in the template renders nothing.
+  gateBlock: renderGateBlock(gate),
   criteriaBlock: criteria.length
     ? `Acceptance criteria (${criteria.length}):\n${criteria.map((c) => `- [${c.id}] (task #${c.taskId}) ${c.text}`).join('\n')}`
     : 'Acceptance criteria: none were extractable. No child issue body carries a `## Acceptance criteria` section. Review the diff on its own merits and return an empty `criteria` array; do not invent criteria.',
 }, [...REQUIRES_LAST_JSON_BLOCK, ...REQUIRES_PHASES]);
+
+const renderGateBlock = (gate) => {
+  if (!gate || !gate.status || gate.status === 'no_commit') return '';
+  if (gate.status !== 'passed' && gate.status !== 'failed') {
+    return `Step 1b — The runner could not run the project's checks over \`${gate.head ?? 'this tip'}\` (${gate.problem ?? gate.status}). Do not run them yourself: a criterion only a check settles is \`unknown\`, and say in \`summary\` that the checks did not run.`;
+  }
+  const intro = "Step 1b — The runner already ran the project's checks over this tip, outside your sandbox. Do not run them yourself: cite this record as the evidence for any criterion a check settles, and treat a failed command as a finding.\n\n";
+  const commands = (gate.checks ?? []).map((command) => `- \`${command}\``).join('\n');
+  if (gate.status === 'passed') return `${intro}Gate over \`${gate.head}\`: **passed**, every command exited 0.\n${commands}`;
+  return `${intro}Gate over \`${gate.head}\`: **failed** — \`${gate.failingCommand}\` ${gate.timedOut ? 'timed out' : `exited ${gate.failingCode ?? 'non-zero'}`}.\n${commands}\n\n\`\`\`\n${gate.output ?? ''}\n\`\`\``;
+};
 
 /**
  * The fixer's prompt. Its list is the runner's arithmetic over the verifier's

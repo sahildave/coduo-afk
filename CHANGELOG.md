@@ -2,6 +2,43 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **`afk close --redo` re-reviews with the tip gate, and an unrun gate says so (2026-11-15).**
+  The review-only redo after a fix pass ran the verifier with no gate record,
+  and the prompt no longer tells it to run the checks, so it reviewed with no
+  check evidence. It now runs the gate over the head first and passes the
+  record. A gate that could not run (lock timeout, `baselineChecks: []`) no
+  longer appears under "the runner already ran the project's checks"; the
+  verifier is told the checks did not run and to leave check-only criteria
+  `unknown`. No config change.
+
+- **A failed retry reset fails the lane, not the run (2026-11-15).**
+  `resetForRetry` rethrew any worktree-reset error that was not a full disk,
+  ending the orchestrator on one lane's bad worktree. It now leaves the lane
+  `infra_failed` with the error in the log, the way a full disk already did
+  (`afk reset <id>` to retry). No config change.
+
+- **The fixer no longer turns an `unknown` criterion into `met` (2026-11-15).**
+  `withCheckedCriteria` rewrote the verifier's `unknown` to `met` on the
+  fixer's own word and the closeout ticked it. Removed. The fixer's
+  "already met — ..." line shows in the closeout as the fixer's claim; the
+  verdict stays the verifier's. `prompts/fixer.md` says the fixer does not
+  settle criteria. No config change.
+
+- **The closeout reason no longer claims gates that did not exist (2026-11-15).**
+  A complete epic's reason always ended "and every gate was accepted", even
+  with no `gate: after` task. It now says so only when the epic had gates, and
+  the closeout's outcome line adds the verifier's recommendation. No config
+  change.
+
+- **The closeout verifier cites the tip gate instead of re-running the checks (2026-11-15).**
+  The verifier re-ran the repo's checks in a sandbox that cannot bind ports,
+  write `.build` or reach the network, so reviews filled with `unknown`
+  criteria and false must-fix. The runner now runs the closeout gate over the
+  tip before the review (`runCloseoutGate` with `force`, reusing its record on
+  an unchanged head) and puts the record (commands, exit code, failing output)
+  in the verifier prompt; Step 1b is gone. The gate after the fixer is
+  unchanged. No config change.
+
 - **Lane worktrees ignore `.afk-report.json` and `.pnpm-store/` (2026-11-15).**
   The lane heartbeat is written into whatever directory the lane is in and
   `git add -A` committed it into task diffs. `createTaskWorktree` now appends

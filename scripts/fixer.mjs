@@ -1015,39 +1015,6 @@ export const renderUnpassedLanes = (lanes) => {
 };
 
 /**
- * The verifier's report with every check-only criterion the fix pass found
- * already met written back as `met`, its output as the evidence (#143).
- *
- * For rendering the closeout only: the verifier's own report on disk is never
- * rewritten, the recommendation and the epic's outcome are computed before the
- * fix pass ran, and the evidence says whose word it is. A check the fixer could
- * not run, or that failed and became a fix, stays `unknown`.
- */
-export const withCheckedCriteria = (report, fixReport) => {
-  if (!report || !Array.isArray(fixReport?.items)) return report;
-  const byItem = new Map(fixReport.items.filter((item) => item.checkOnly && item.criterionId).map((item) => [item.id, item.criterionId]));
-  const checked = new Map();
-  for (const entry of fixReport.deferred ?? []) {
-    const criterionId = byItem.get(entry.id);
-    const reason = pickString(entry.reason);
-    if (!criterionId || !reason || !/^already met\b/i.test(reason)) continue;
-    checked.set(criterionId, reason.replace(/^already met\s*[—–:-]*\s*/i, "").trim());
-  }
-  if (!checked.size) return report;
-  const criteria = (report.criteria ?? []).map((criterion) =>
-    checked.has(criterion.id) && criterion.verdict === "unknown"
-      ? {
-          ...criterion,
-          verdict: "met",
-          evidence: `met by the closeout fix pass, not re-reviewed: ${checked.get(criterion.id) || "no output given"}`,
-        }
-      : criterion,
-  );
-  const merged = { ...report, criteria };
-  return { ...merged, counts: verifierReportCounts(merged) };
-};
-
-/**
  * The fix pass as `.afk/state.json` records it — the same numbers, in fields.
  *
  * `close.fixer` used to be `{fixed: report.fixed.length, deferred:
@@ -1183,6 +1150,9 @@ export const runCloseoutGate = async ({
   runChecks,
   ranAt = null,
   reuse = true,
+  // Run the chain over the tip even when no fix commit moved it: the pre-review
+  // gate, whose record the verifier cites instead of re-running the checks.
+  force = false,
   say = console.log,
 }) => {
   const id = normalizeId(epicId ?? null);
@@ -1226,7 +1196,7 @@ export const runCloseoutGate = async ({
     output: null,
     problem: null,
   };
-  if (headBefore && head && (head !== headBefore || tipUngated)) {
+  if (headBefore && head && (force || head !== headBefore || tipUngated)) {
     if (!commands.length) {
       // A project with `baselineChecks: []` has opted out of a chain, so there
       // is nothing to run and the tip is genuinely ungated. Say that, rather

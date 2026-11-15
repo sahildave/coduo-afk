@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import {
   checkOnlyCriterion, FIXER_JSON_SCHEMA, fixerItems, fixerStateRecord, lessonCounts, needsHuman, normalizeFixerReport, parseFixerOutput,
   renderFixerItems, renderFixerMarkdown, renderFixerOutcome, renderMinorsComment,
-  renderUnpassedLanes, runFixer, spawnFixer, unpassedLanes, unqueuedFindings, withCheckedCriteria,
+  renderUnpassedLanes, runFixer, spawnFixer, unpassedLanes, unqueuedFindings,
 } from './fixer.mjs';
 import { roleFor, rolePrompt } from './roles.mjs';
 
@@ -930,35 +930,6 @@ test('check-only routing, case by case: the sandbox stopped it (queue) or a pers
   ];
   const wrong = table.filter(([evidence, want]) => checkOnlyCriterion({ verdict: 'unknown', evidence }) !== want);
   assert.deepEqual(wrong, []);
-});
-
-test('a check-only item the fixer found already met is written back as met, with its output', () => {
-  // #143 asked for `met` with pasted output. The fixer reports a passing check
-  // as `already met — …`, and the closeout's criteria table kept saying unknown.
-  const report = review({
-    criteria: [
-      { id: '818.3', taskId: '818', text: 'break the hint, watch the test fail', verdict: 'unknown', evidence: 'mutation denied in this session' },
-      { id: '818.4', taskId: '818', text: 'another', verdict: 'unknown', evidence: 'mutation denied in this session' },
-    ],
-  });
-  const items = fixerItems(report);
-  assert.equal(items[0].criterionId, '818.3');
-  const fixReport = {
-    status: 'ok',
-    items,
-    fixed: [],
-    deferred: [
-      { id: 'F1', title: items[0].title, reason: 'already met — `npm test -- hint`: 1 failed with the span removed, 12 passed restored', kind: 'no_op' },
-      { id: 'F2', title: items[1].title, reason: 'could not run it either: the suite needs a browser', kind: 'needs_human' },
-    ],
-  };
-  const merged = withCheckedCriteria(report, fixReport);
-  assert.equal(merged.criteria[0].verdict, 'met');
-  assert.match(merged.criteria[0].evidence, /closeout fix pass.*`npm test -- hint`: 1 failed with the span removed/);
-  assert.equal(merged.criteria[1].verdict, 'unknown', 'a check the fixer could not run stays unknown');
-  assert.equal(merged.counts.criteria.met, 1);
-  assert.equal(report.criteria[0].verdict, 'unknown', 'the verifier\'s own report is not rewritten');
-  assert.equal(withCheckedCriteria(report, null), report);
 });
 
 test('a task parked on a human acceptance is named as that, not as never built', (t) => {

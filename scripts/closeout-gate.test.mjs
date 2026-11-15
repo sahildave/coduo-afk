@@ -153,7 +153,6 @@ test("with a lighter `integrationChecks`, an unmoved tip still gets the full cha
   assert.deepEqual(seen, [{ commands: ["pnpm run check", "pnpm run test:e2e"], cwd: root }]);
   // Not "re-run over the fix commit": there is none, and the line says why it ran.
   assert.match(renderCloseoutGateLine(gate), /gated: \*\*yes\*\*/);
-  assert.match(renderCloseoutGateLine(gate), /integrationChecks/);
   assert.doesNotMatch(renderCloseoutGateLine(gate), /fix pass/);
 });
 
@@ -451,7 +450,7 @@ test("a closeout that commits a repair leaves the chain re-run over that commit"
     run.head,
     `the chain never ran over the fix commit; it saw ${JSON.stringify(run.gateHeads)}`,
   );
-  assert.equal(run.gateHeads.length, 2, "exactly one extra chain run: the run's baseline, then the gate");
+  assert.equal(run.gateHeads.length, 3, "the run's baseline, the gate before the review, then the gate over the fix commit");
   // The artifact the wave digest reads, in the run's own `.afk/`.
   assert.equal(readCloseoutGate(run.repo, "203").fixSha, run.head);
   // Advisory, as the fix pass is: a gated close is still a close.
@@ -511,15 +510,15 @@ test("a restart inside the crash window gates the fix commit instead of calling 
   );
 });
 
-test("a closeout that commits nothing pays for no second chain run", async (t) => {
+test("a closeout that commits nothing pays for no chain run after the pre-review gate", async (t) => {
   const run = await closedEpic({ mustFix: [], commit: false });
   t.after(run.cleanup);
 
   const gate = run.state.epicClose.fixGate;
   assert.ok(gate, "the close recorded no gate at all");
-  assert.equal(gate.status, "no_commit");
-  assert.equal(gate.fixSha, null);
-  assert.equal(run.gateHeads.length, 1, "only the run's own baseline may have run");
+  assert.equal(gate.status, "passed");
+  assert.equal(gate.fixSha, run.head);
+  assert.equal(run.gateHeads.length, 2, "the run's baseline and the gate before the review, nothing after the fixer");
 });
 
 // ---------------------------------------------------------------------------
@@ -817,7 +816,7 @@ test("the last wave of a run does not end on an ungated tip", async (t) => {
   const digest = (id) => readFileSync(join(repo, "docs", "afk-runs", `${id}.md`), "utf8");
   // Wave 1's closeout commits nothing, which the digest says rather than
   // leaving the reader to assume.
-  assert.match(digest("wave-01"), /gated: \*\*n\/a\*\* — the fix pass committed nothing/);
+  assert.match(digest("wave-01"), /gated: \*\*yes\*\* — no fix commit/);
   // Wave 2's does, and the chain saw it.
   const gate = JSON.parse(
     readFileSync(join(repo, ".afk", "archive", "wave-02", "fixer", "wave-02", "gate.json"), "utf8"),
@@ -843,4 +842,22 @@ test("the last wave of a run does not end on an ungated tip", async (t) => {
     tip,
     `the chain never executed against the final tip; it saw ${JSON.stringify(chainHeads)}`,
   );
+});
+
+test("force runs the chain over a tip no fix commit moved, and a second call reuses the record", async (t) => {
+  const root = mkdtempSync(join(tmpdir(), "afk-gate-force-"));
+  t.after(() => rmSync(root, { recursive: true, force: true }));
+  seedRepo(root);
+  const head = headOf(root);
+  let runs = 0;
+  const runChecks = async () => { runs += 1; return { ok: true }; };
+  const args = { root, config: { baselineChecks: ["npm test"] }, epicId: "force-1", headBefore: head, runChecks };
+
+  const gate = await runCloseoutGate({ ...args, force: true });
+  assert.equal(gate.status, "passed");
+  assert.deepEqual(gate.checks, ["npm test"]);
+  // The post-fix call over the same head costs nothing.
+  const again = await runCloseoutGate(args);
+  assert.deepEqual(again, gate);
+  assert.equal(runs, 1);
 });
