@@ -96,7 +96,7 @@ import {
   verifierReportCounts,
 } from "./verifier.mjs";
 import { noteLaneDefect, recordIntegrationDefect, recordLaneDefect, renderMidRunDefects } from "./defects.mjs";
-import { lessonCounts, partitionDeferred, partitionFixed, readCloseoutGate, renderMinorsComment, renderUnpassedLanes, unpassedLanes, unpassedTaskIds, withCheckedCriteria } from "./fixer.mjs";
+import { lessonCounts, partitionDeferred, partitionFixed, readCloseoutGate, renderMinorsComment, renderUnpassedLanes, unpassedLanes, unpassedTaskIds } from "./fixer.mjs";
 import { ARTEFACT_PREFIXES } from "./sweep.mjs";
 import { appendCloseRow, appendLaunchRow, recordGate } from "./measure.mjs";
 import { GATE_HEARTBEAT_MS, gateWaitPath, quietHostLoad, readGateHolder, waitForQuietHost, withGateLock } from "./gate-lock.mjs";
@@ -867,12 +867,8 @@ export const renderStageHeader = (close = {}, report = null, fixReport = null) =
 
 // Neither report is defaulted: a nullish one is handled below, and an arity of 4
 // is what tells a caller (and a probe) that this renders a RECONCILED closeout.
-export const renderCloseout = (dag, state, rawReport, fixReport) => {
+export const renderCloseout = (dag, state, report, fixReport) => {
   const close = state.epicClose ?? {};
-  // One report for the whole document: a check-only criterion the fix pass
-  // found met is met in the stage header AND the criteria table (#143), or the
-  // same closeout says 0/1 in one place and 1/1 in the other.
-  const report = withCheckedCriteria(rawReport, fixReport);
   const label = dag.epic?.title ?? dag.epic?.id ?? state.epic ?? "epic";
   const mark = { passed: "✅", "no-op": "✅", failed: "❌", integration_failed: "❌", blocked: "⛔", [AWAITING_ACCEPTANCE]: "⏳" };
   const gates = gateAfterTasks(dag);
@@ -941,7 +937,6 @@ export const renderCloseout = (dag, state, rawReport, fixReport) => {
   const defects = renderMidRunDefects(state);
   if (defects) lines.push("", defects);
   lines.push("", report
-    // A check-only criterion the fix pass found met renders as met (#143).
     ? tickFixedMustFix(renderVerifierMarkdown(report), fixReport)
     : `## Verifier\n\n_Did not run: ${close.verifier?.skipped ?? "no reason recorded"}._`);
   // One line so the reader knows a fix pass happened at all — the deferrals and
@@ -967,6 +962,11 @@ export const renderCloseout = (dag, state, rawReport, fixReport) => {
       // "0 left for you" is false while findings the pass never queued are open.
       + `${fixReport.notQueued ? `; ${fixReport.notQueued} minor finding(s) never queued and still open` : ""}._`,
     );
+    // The fixer's own word on a criterion the verifier left `unknown`, as the
+    // fixer's claim on its own line; the verdict above stays the verifier's.
+    const checkOnlyIds = new Set((fixReport.items ?? []).filter((item) => item.checkOnly).map((item) => item.id));
+    const claims = partitionDeferred(fixReport).noOp.filter((entry) => checkOnlyIds.has(entry.id) && /^already met\b/i.test(entry.reason ?? ""));
+    for (const entry of claims) lines.push("", `_Fixer claim, not re-reviewed — ${entry.title ?? entry.id}: ${entry.reason}_`);
   }
   return `${lines.join("\n").replace(/\n{3,}/g, "\n\n").trim()}\n`;
 };

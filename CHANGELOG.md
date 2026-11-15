@@ -2,6 +2,13 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **The fixer no longer turns an `unknown` criterion into `met` (2026-11-15).**
+  `withCheckedCriteria` rewrote the verifier's `unknown` to `met` on the
+  fixer's own word and the closeout ticked it. Removed. The fixer's
+  "already met — ..." line shows in the closeout as the fixer's claim; the
+  verdict stays the verifier's. `prompts/fixer.md` says the fixer does not
+  settle criteria. No config change.
+
 - **The closeout reason no longer claims gates that did not exist (2026-11-15).**
   A complete epic's reason always ended "and every gate was accepted", even
   with no `gate: after` task. It now says so only when the epic had gates, and
