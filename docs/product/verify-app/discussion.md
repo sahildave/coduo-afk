@@ -192,6 +192,20 @@ which is a different kind of CLI from the one Fable rejected (see Session log).
   pure-UI features (open the Settings modal) get only the smoke test. The real
   gain is forcing logic out of the screens into a testable core; the map
   table is the part most likely to rot unless a coverage check enforces it.
+- pstack on staleness (cursor/plugins, read 2026-11-15): `maintain-verification-skill`
+  opens with "a feature map rots the moment the app changes" and answers with
+  a periodic audit pass (one reader per feature, one live pass, one PR of
+  fixes). `create-verification-skill` says a proof that drives one entry point
+  is incomplete when the map lists others. The formal pair records the files
+  each check covers plus a sync commit, and warns that a pass on a stale model
+  is the dangerous case. Our plan differs: tests live in the product suite and
+  run on every PR, so drift shows as a red test instead of waiting for an
+  audit. Borrow the covered-files idea for the map.
+- Tests call the core directly; the CLI is for people and agents to drive the
+  core by hand (explore, reproduce, set up a state, show proof, later MCP).
+  CLI rule: one command calls one public core function, parses arguments and
+  prints the result; validation and defaults live in the core; the CLI folder
+  may import only the core's public API (a lint rule can enforce it).
 
 ## In your words
 
