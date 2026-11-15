@@ -317,6 +317,53 @@ the same PR; the coverage check catches orphans.
   `Metal/SilverMetal.swift` import SwiftUI/AppKit. stage-manager has
   `StageManagerKit` and tests but no CLI. Recommended pilot: shareling.
 
+## Input from Futari (DuoCam) — 2026-11-15
+
+Sent by the Futari session; full notes in futari
+`docs/product/futari-app-cli/discussion.md` (uncommitted there).
+
+**Futari today:** `FlowReducer` and seven screen-state types are pure and
+tested; the messages the phones exchange are Codable. Missing: `PeerLink.swift`
+(2,984 lines, imports UIKit) mixes transport and session logic; timers, the
+reconnect latch, the paywall retry and the screen changes on link change still
+sit in views.
+
+**What it adds to the general design (applies to every product):**
+1. **The core can run as several instances in one process.** Futari needs
+   two phones, so the CLI addresses an instance (`futari A shoot --still`,
+   `futari B album`) and a journey checks both after each step. Same for any
+   multi-user product (two Gitback Clients editing one board).
+2. **The clock is an input.** Any timer (hold, reconnect, abandon, trial
+   expiry) reads an injected clock; the CLI and tests advance it
+   (`advance 30s`). No sleeps in journeys.
+3. **External links are fakes you can control.** The fake transport can drop,
+   delay, refuse and reconnect on command. This is where the hard bugs are,
+   and it is the case for a hand-written fake (no provider test mode exists).
+4. **Gates are journeys.** "No connection without entitlement" is a map row
+   with an outcome test, because a path that skipped the paywall existed.
+5. **Feature map IDs = screen-state IDs.** States the core can reach drive the
+   Screen Gallery and Coduo Gallery; a gallery state set by hand can show
+   combinations the app never reaches. One ID list for the map, the gallery and
+   the tests.
+6. **The core takes OS facts as input** (a permission snapshot, camera
+   availability) and never asks the system. Camera, video encode, Photos and
+   permission prompts stay outside; they get their own seam (Futari's
+   `PreviewLagTests` feeds synthetic frames through the real encoder).
+7. **Review rules:** core switches are exhaustive (no `default:`), so a new
+   case fails to compile; a removed state's tests are rewritten, not deleted;
+   an input nothing reads is removed.
+
+**Futari journeys to cover:** consent refused; link drops while holding; link
+drops mid-transfer (shares the TCP link with the preview); both pick the same
+role; peer forgotten on one side only; reconnect abandoned then back to Home;
+peer ends the session with the Shot viewer open; camera unavailable or
+throttled (7 `CaptureAvailability` cases).
+
+**First core extraction for Futari:** split `PeerLink` into a transport
+protocol (real `NWConnection`/Bonjour, and a loopback fake) and a session core
+with no UIKit import; move the view timers and latches into the core behind
+the injected clock.
+
 ## Session log
 
 ### 2026-11-15
