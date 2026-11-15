@@ -6,7 +6,7 @@ import { tmpdir, userInfo } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createEpicWorktree, epicWorktree, foreignLane, listAfkWorktrees, liveEpics, sharedBuildPaths, taskWorktree, worktreeRoot }
+import { createEpicWorktree, createTaskWorktree, epicWorktree, foreignLane, listAfkWorktrees, liveEpics, sharedBuildPaths, taskWorktree, worktreeRoot }
   from './worktree.mjs';
 import { mainCheckout } from './runtime-herdr.mjs';
 import { pruneLanes, removeEpicWorktree } from './finish.mjs';
@@ -680,4 +680,20 @@ test('two repos that share a directory name get their own folders under ~/code/w
   assert.match(out.second.epic, /\/code\/worktrees\/app-[0-9a-f]{6}\/epic\/12\/app$/);
   assert.equal(out.again, out.first.epic, 'deterministic: asking again gives the same path');
   assert.equal(git(out.second.epic, 'rev-parse', '--git-common-dir').trim(), join(two, '.git'));
+});
+
+test('a lane worktree ignores .afk-report.json at any depth, once', (t) => {
+  const { base, main } = fixture(t);
+  useRoots(t, base);
+  const sha = git(main, 'rev-parse', 'HEAD').trim();
+  const { worktree } = createTaskWorktree({ root: main, id: '9', baseSha: sha, setup: {} });
+  createTaskWorktree({ root: main, id: '9', baseSha: sha, setup: {} }); // reuse path: no duplicate lines
+  mkdirSync(join(worktree, 'sub', 'deep'), { recursive: true });
+  writeFileSync(join(worktree, '.afk-report.json'), '{}');
+  writeFileSync(join(worktree, 'sub', 'deep', '.afk-report.json'), '{}');
+  mkdirSync(join(worktree, '.pnpm-store'));
+  writeFileSync(join(worktree, '.pnpm-store', 'x'), 'x');
+  assert.equal(git(worktree, 'status', '--porcelain', '-uall').trim(), '');
+  const exclude = readFileSync(join(main, '.git', 'info', 'exclude'), 'utf8');
+  assert.equal(exclude.split('\n').filter((l) => l === '.afk-report.json').length, 1);
 });

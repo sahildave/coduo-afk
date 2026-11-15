@@ -1,4 +1,4 @@
-import { copyFileSync, existsSync, lstatSync, readFileSync, readdirSync, realpathSync, rmdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, lstatSync, readFileSync, readdirSync, realpathSync, rmdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { homedir, tmpdir, userInfo } from 'node:os';
 import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
@@ -536,6 +536,22 @@ export const createEpicWorktree = ({ root, branch, epicId, setup }) => {
   return { worktree, reused: false, setup: bootstrapWorktree({ root, worktree, setup }) };
 };
 
+// The lane heartbeat (`.afk-report.json`) is written into whatever directory the
+// lane is in, and `git add -A` would commit it. Exact-path bookkeeping filters
+// miss it, so exclude it per repo. The exclude file lives in the common git dir,
+// shared by every worktree; append only the lines still missing.
+const LANE_EXCLUDES = ['.afk-report.json', '.pnpm-store/'];
+const excludeLaneArtifacts = (worktree) => {
+  const path = resolve(worktree, run('git rev-parse --git-path info/exclude', { cwd: worktree }).stdout.trim());
+  let text = '';
+  try { text = readFileSync(path, 'utf8'); } catch {}
+  const have = new Set(text.split('\n'));
+  const missing = LANE_EXCLUDES.filter((line) => !have.has(line));
+  if (!missing.length) return;
+  ensureDir(dirname(path));
+  appendFileSync(path, `${text && !text.endsWith('\n') ? '\n' : ''}${missing.join('\n')}\n`);
+};
+
 export const createTaskWorktree = ({ root, id, baseSha, setup }) => {
   if (!process.env.AFK_WORKTREE_ROOT) claimRepo(root);
   const branch = taskBranch(id);
@@ -548,6 +564,7 @@ export const createTaskWorktree = ({ root, id, baseSha, setup }) => {
     // Bootstrap is idempotent, and a reused lane may have been cleaned since —
     // `resetTaskWorktree`'s `git clean -fdq` removes copied files and symlinks
     // alike, so re-running it here is what keeps a retried task buildable.
+    excludeLaneArtifacts(worktree);
     return { branch, worktree, reused: true, setup: bootstrapWorktree({ root, worktree, setup }) };
   }
   const branchArg = branchExists(root, branch)
@@ -557,6 +574,7 @@ export const createTaskWorktree = ({ root, id, baseSha, setup }) => {
     ? git(root, `worktree add ${shellQuote(worktree)} ${branchArg}`)
     : git(root, `worktree add ${shellQuote(worktree)} ${branchArg}`);
   if (result.status !== 0) throw new Error(`Cannot create worktree for ${id}: ${result.stderr || result.stdout}`);
+  excludeLaneArtifacts(worktree);
   return { branch, worktree, reused: false, setup: bootstrapWorktree({ root, worktree, setup }) };
 };
 
