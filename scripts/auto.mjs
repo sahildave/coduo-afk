@@ -3656,7 +3656,7 @@ export const runAuto = async ({
    * block one either — a review that could halt the runner would be a gate that
    * writes to the thing it gates, which docs/epic-schema.md rejects.
    */
-  const runCloseoutVerifier = async (outstanding) => {
+  const runCloseoutVerifier = async (outstanding, gate = null) => {
     if (!state.epic?.id && !state.epic) {
       return { report: null, skipped: "this run has no epic id (the `--dag=` seam), so there is nothing to review against" };
     }
@@ -3668,6 +3668,7 @@ export const runAuto = async ({
         branch: dag.branch ?? baseBranch,
         baseBranch: epicBase,
         outstanding,
+        gate,
         reuse: true,
       });
       // A reused report is an earlier session's review; its switch was logged then.
@@ -3725,7 +3726,10 @@ export const runAuto = async ({
       // `reuse: true` inside: a review already on disk for this epic is
       // returned rather than re-run, so parking on acceptance and then closing
       // costs one review, not two.
-      ({ report, skipped } = await runCloseoutVerifier(outstanding));
+      // The checks run here, over the tip, where they can bind ports and write
+      // `.build`; the verifier cites the record instead of re-running them.
+      const gate = await gateCloseoutFix(headSha(root), { force: true });
+      ({ report, skipped } = await runCloseoutVerifier(outstanding, gate));
       decision = report ? verifierDecision(report) : null;
     } catch (error) {
       report = null;
@@ -3820,7 +3824,7 @@ export const runAuto = async ({
    * stated fail direction on `runCloseoutGate`. The gate reports; the DAG and
    * the verifier still decide.
    */
-  const gateCloseoutFix = async (headBefore) => {
+  const gateCloseoutFix = async (headBefore, { force = false } = {}) => {
     let gate = null;
     try {
       const { runCloseoutGate } = await import("./fixer.mjs");
@@ -3833,6 +3837,7 @@ export const runAuto = async ({
         config,
         epicId: normalizeId(dag.epic?.id ?? null),
         headBefore,
+        force,
         say,
         // The same chain `integrate.mjs` re-runs after a merge, and the same one
         // the run's own baseline ran: `baselineChecks ?? defaultChecks`.

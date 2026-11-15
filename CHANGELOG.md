@@ -2,6 +2,15 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **The closeout verifier cites the tip gate instead of re-running the checks (2026-11-15).**
+  The verifier re-ran the repo's checks in a sandbox that cannot bind ports,
+  write `.build` or reach the network, so reviews filled with `unknown`
+  criteria and false must-fix. The runner now runs the closeout gate over the
+  tip before the review (`runCloseoutGate` with `force`, reusing its record on
+  an unchanged head) and puts the record (commands, exit code, failing output)
+  in the verifier prompt; Step 1b is gone. The gate after the fixer is
+  unchanged. No config change.
+
 - **Herdr lanes start in repos Claude Code has not trusted yet (2026-11-12).**
   An interactive `claude` stopped at the workspace trust dialog in each fresh
   lane worktree when the repo's main checkout had no trust record, so `herdr

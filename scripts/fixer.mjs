@@ -1183,6 +1183,9 @@ export const runCloseoutGate = async ({
   runChecks,
   ranAt = null,
   reuse = true,
+  // Run the chain over the tip even when no fix commit moved it: the pre-review
+  // gate, whose record the verifier cites instead of re-running the checks.
+  force = false,
   say = console.log,
 }) => {
   const id = normalizeId(epicId ?? null);
@@ -1226,7 +1229,7 @@ export const runCloseoutGate = async ({
     output: null,
     problem: null,
   };
-  if (headBefore && head && (head !== headBefore || tipUngated)) {
+  if (headBefore && head && (force || head !== headBefore || tipUngated)) {
     if (!commands.length) {
       // A project with `baselineChecks: []` has opted out of a chain, so there
       // is nothing to run and the tip is genuinely ungated. Say that, rather

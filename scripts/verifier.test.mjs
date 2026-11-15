@@ -1136,25 +1136,6 @@ test("the prompt carries the issue text itself, so gh is not a gate", async () =
   rmSync(root, { recursive: true, force: true });
 });
 
-test("the prompt names the project's declared checks, and says nothing when there are none", async () => {
-  const root = workspace();
-  const run = (config) => runVerifier({
-    root, config, dag: DAG, branch: "feat/255-keymap", baseBranch: "main",
-    runAgent: fakeAgent(() => streamWith(agentText())),
-  });
-  const promptPath = resolve(root, ".afk", "verifier", "255", "prompt.md");
-  await run({ defaultChecks: ["swift build", "swift test"] });
-  let prompt = readFileSync(promptPath, "utf8");
-  assert.match(prompt, /Step 1b — Run the project's declared checks[^]*- `swift build`\n- `swift test`/);
-  assert.match(prompt, /goes in `skipped` with the reason/);
-  rmSync(resolve(root, ".afk", "verifier"), { recursive: true, force: true });
-  await run({});
-  prompt = readFileSync(promptPath, "utf8");
-  assert.doesNotMatch(prompt, /Step 1b/);
-  assert.doesNotMatch(prompt, /\{\{#?\/?checks\}\}/, "the section marks do not leak");
-  rmSync(root, { recursive: true, force: true });
-});
-
 test("an epic with no extractable criteria tells the agent so, not nothing", async () => {
   const root = workspace();
   await runVerifier({
@@ -2467,4 +2448,14 @@ test("a quoted JSON file is not a report, so it does not stop the nudge", async 
   assert.equal(calls, 2, "the quoted block did not count as a report");
   assert.equal(report.counts.findings.blocker, 1, "the nudge's review, with its blocker, is the one kept");
   rmSync(root, { recursive: true, force: true });
+});
+
+test("the verifier prompt cites the tip gate record and never tells the review to run the checks", () => {
+  const gate = { status: "failed", head: "abc1234", checks: ["npm test"], failingCommand: "npm test", failingCode: 1, output: "not ok 3 - parses" };
+  const prompt = rolePrompt(roleFor("verifier"), null, { epic: { id: "9" }, criteria: [], tasks: [], gate });
+  assert.match(prompt, /Gate over `abc1234`: \*\*failed\*\* — `npm test` exited 1/);
+  assert.match(prompt, /not ok 3 - parses/);
+  assert.doesNotMatch(prompt, /each one in your own shell/);
+  const none = rolePrompt(roleFor("verifier"), null, { epic: { id: "9" }, criteria: [], tasks: [] });
+  assert.doesNotMatch(none, /Step 1b/);
 });

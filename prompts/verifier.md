@@ -36,13 +36,11 @@ Then two lists the schema names:
 
 File what you find as `findings` with `axis: "reach"`, alongside the two lists.
 
-{{#checks}}
-Step 1b — Run the project's declared checks in this checkout, each one in your own shell:
+{{#gateBlock}}
+Step 1b — The runner already ran the project's checks over this tip, outside your sandbox. Do not run them yourself: cite this record as the evidence for any criterion a check settles, and treat a failed command as a finding.
 
-{{checks}}
-
-A check that cannot run here — tool denied, tree unwritable, dependency missing — goes in `skipped` with the reason. Do not substitute a guess for it.
-{{/checks}}
+{{gateBlock}}
+{{/gateBlock}}
 
 Step 1d — Journeys, only if the repo has a verify skill: a `.claude/skills/verify-*/` folder with a `features/` directory. If none exists, skip this step and say so in `summary`.
 

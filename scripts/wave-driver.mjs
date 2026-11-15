@@ -42,10 +42,10 @@ export const renderCloseoutGateLine = (gate) => {
   // than the full chain, so this was the epic's only full gate after the baseline.
   const tipOnly = Boolean(gate.fixSha && gate.fixSha === gate.headBefore);
   if (tipOnly && gate.status === "passed") {
-    return `closeout tip ${at} gated: **yes** — no fix commit, but integration ran the lighter \`integrationChecks\`, so the full chain (${count} check(s)) ran over the tip; all exited 0.`;
+    return `closeout tip ${at} gated: **yes** — no fix commit; the full chain (${count} check(s)) ran over the tip before the closeout review; all exited 0.`;
   }
   if (tipOnly && gate.status === "failed") {
-    return `closeout tip ${at} gated: **yes**, and it ${gate.timedOut ? "TIMED OUT" : "FAILED"} — \`${gate.failingCommand}\` ${gate.timedOut ? "was killed at the bound" : `exited ${gate.failingCode ?? "non-zero"}`}. Integration ran the lighter \`integrationChecks\`, so the break most likely came from a task integrated after the baseline; the epic's outcome is unchanged.`;
+    return `closeout tip ${at} gated: **yes**, and it ${gate.timedOut ? "TIMED OUT" : "FAILED"} — \`${gate.failingCommand}\` ${gate.timedOut ? "was killed at the bound" : `exited ${gate.failingCode ?? "non-zero"}`}. The epic's outcome is unchanged.`;
   }
   if (gate.status === "passed") {
     return `closeout fix ${at} gated: **yes** — ${count} check(s) re-run over it after the gates had passed below it; all exited 0.`;
