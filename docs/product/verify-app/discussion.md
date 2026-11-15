@@ -247,6 +247,47 @@ A pure-screen feature skips step 2.
 **Edit or remove a feature:** the lane changes the test and the map row in
 the same PR; the coverage check catches orphans.
 
+## Feature folders, mocks, platform order — 2026-11-15
+
+- **Folder rule (from the talk, widened).** The talk shows two top-level
+  folders, `electron-renderer` and `electron-main`, with imports between them
+  banned, types included, by a dependency-graph check and lint [06:10]
+  [06:30]. It does not show per-feature folders. Our version: one folder per
+  feature or area; a feature imports only its own files, the core's public API
+  and a small `shared/`; never another feature's internals. Enforced by a lint
+  or dependency rule (dependency-cruiser / eslint-plugin-boundaries for TS, Swift
+  package targets for SwiftUI, crates for Rust), not by prose.
+- **CI:** gitback has no test CI because GitHub Actions minutes ran out. The
+  gate can run in the AFK lane on this machine instead; that is enough.
+- **Next.js / Astro extraction does not break server rendering.** Server
+  Actions and server components keep calling functions; the function just
+  lives in `core/`. What must stay outside the core: `cookies()`, `headers()`,
+  `redirect()`, `revalidatePath()` and auth reads. The action becomes a thin
+  wrapper: read the session, call the core, revalidate. One risk: a client
+  component importing the core would bundle server code; ban that with the
+  folder rule, not with `server-only` (that package throws in plain node, so the
+  CLI and vitest would break).
+- **When to fake and when not** (Google, *Software Engineering at Google*
+  ch. 13; Fowler, "Mocks Aren't Stubs"; Freeman and Pryce, "don't mock what you
+  don't own"):
+  1. Use the real thing when it is fast and deterministic: your own code, the
+     database (a local Postgres or SQLite, Testcontainers).
+  2. Use a fake when the real thing is slow, paid, rate-limited or external
+     (GitHub, Stripe, Apple): a working stand-in, ideally the provider's own
+     (GitHub emulator, Stripe test mode), with a contract test that runs the
+     same checks against the real service so the fake cannot drift.
+  3. Use mocks (checking "was X called") rarely; they test how the code is
+     written, not what it does, and break on refactors.
+  4. Run the full happy path once against real services (test accounts) before
+     merge to the shipping branch. Fast fakes for every lane, real services for
+     the final gate.
+- **Platform UI is driven by agents, not by Sahil:** agent-device for iOS and
+  React Native, Atlas for macOS, agent-browser for web. Camera is the hard
+  case (simulators have no camera); it needs a device or an injected test feed.
+- **Platform priority:** 1. SwiftUI (macOS, then iOS); 2. React Native;
+  3. web (Next.js, Astro, React); Tauri only for Gitsu. The pilot should be a
+  SwiftUI Mac app; mac-directory fits.
+
 ## Session log
 
 ### 2026-11-15
