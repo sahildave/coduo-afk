@@ -81,6 +81,25 @@ test("an epic with every task passed and no gate is complete", () => {
   assert.equal(epicOutcome(dag, stateOf({ 204: "passed", 205: "passed" })).status, "complete");
 });
 
+test("the complete reason claims accepted gates only when the epic had gates", () => {
+  const plain = epicOutcome(dagOf(task("204")), stateOf({ 204: "passed" }));
+  assert.equal(plain.status, "complete");
+  assert.doesNotMatch(plain.reason, /gate/);
+  const gated = epicOutcome(dagOf(task("211", { gateAfter: true })), (() => {
+    const state = stateOf({ 211: "passed" });
+    recordGateAcceptance(state, { dag: dagOf(task("211", { gateAfter: true })), id: "211" });
+    return state;
+  })());
+  assert.match(gated.reason, /every gate was accepted/);
+});
+
+test("the closeout outcome line carries the verifier recommendation", () => {
+  const state = closedState();
+  state.epicClose.verifier = { recommendation: "must-fix" };
+  const markdown = renderCloseout(dagOf(task("204")), state, null);
+  assert.match(markdown, /Outcome: `completed_with_findings`\*\* — .*recommends `must-fix`/);
+});
+
 test("a passed `gate: after` task holds the epic at awaiting_acceptance", () => {
   const dag = dagOf(task("204"), task("211", { gateAfter: true, dependsOn: ["204"] }));
   const state = stateOf({ 204: "passed", 211: "passed" });

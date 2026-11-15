@@ -1008,7 +1008,10 @@ export const epicOutcome = (dag, state) => {
       reason: `every task passed; \`gate: after\` task(s) ${awaiting.join(', ')} await a human's acceptance`,
     };
   }
-  return { ...shape, status: 'complete', reason: 'every task passed or was a confirmed no-op, and every gate was accepted' };
+  // Gates are claimed only when the epic had some: `awaiting` is empty here, so
+  // any `gate: after` task on the DAG was accepted.
+  const gated = gateAfterTasks(dag).length > 0;
+  return { ...shape, status: 'complete', reason: `every task passed or was a confirmed no-op${gated ? ', and every gate was accepted' : ''}` };
 };
 
 /**

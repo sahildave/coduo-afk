@@ -879,7 +879,7 @@ export const renderCloseout = (dag, state, rawReport, fixReport) => {
   const lines = [
     `# Epic closeout — ${label}`,
     "",
-    `**Outcome: \`${close.outcome ?? "?"}\`** — ${close.reason ?? ""}`.trim(),
+    `**Outcome: \`${close.outcome ?? "?"}\`** — ${close.reason ?? ""}${close.verifier?.recommendation ? `. The closeout review recommends \`${close.verifier.recommendation}\`.` : ""}`.trim(),
     "",
     `Branch \`${dag.branch ?? state.branch ?? "?"}\`. Closed ${close.closedAt ?? "?"}.`,
     "",

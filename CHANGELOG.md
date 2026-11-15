@@ -2,6 +2,12 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **The closeout reason no longer claims gates that did not exist (2026-11-15).**
+  A complete epic's reason always ended "and every gate was accepted", even
+  with no `gate: after` task. It now says so only when the epic had gates, and
+  the closeout's outcome line adds the verifier's recommendation. No config
+  change.
+
 - **The closeout verifier cites the tip gate instead of re-running the checks (2026-11-15).**
   The verifier re-ran the repo's checks in a sandbox that cannot bind ports,
   write `.build` or reach the network, so reviews filled with `unknown`
