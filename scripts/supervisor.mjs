@@ -1114,7 +1114,9 @@ export const runSupervisor = async ({
   // The three cheap exits, in order: cache, budget, cost gate. Each of them
   // returns a complete decision, so none of them is a failure path.
   const budget = readBudget(root);
-  const cached = budget.seen?.[signature];
+  // epic_ended is never replayed: its signature cannot see the head sha or the
+  // verifier result, so a cached end replays must-fix items already fixed.
+  const cached = event === "epic_ended" ? null : budget.seen?.[signature];
   if (cached && existsSync(resolve(supervisorDir(root, cached), "decision.json"))) {
     try {
       const previous = JSON.parse(readFileSync(resolve(supervisorDir(root, cached), "decision.json"), "utf8"));

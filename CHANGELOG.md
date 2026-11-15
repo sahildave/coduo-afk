@@ -13,6 +13,13 @@
   builder rules in `prompts/implementer.md` now say to stop only a pid the
   lane started itself.
 
+||||||| ceb83b2
+- **Every epic end gets a fresh supervisor decision (2026-11-15).**
+  The cached answer for `epic_ended` could not see the head sha or the
+  verifier result, so after a fix and re-review it replayed the old must-fix
+  list. `runSupervisor` now skips the cache lookup for that one event; budget,
+  cost gate and caching for every other event are unchanged.
+
 - **Herdr lanes start in repos Claude Code has not trusted yet (2026-11-12).**
   An interactive `claude` stopped at the workspace trust dialog in each fresh
   lane worktree when the repo's main checkout had no trust record, so `herdr
