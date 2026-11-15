@@ -174,10 +174,17 @@ export const laneCapOf = (runs) => {
  */
 export const scopedRuns = (runs, cos) => {
   if (!cos) return runs;
-  const epics = new Set((cos.meta?.epics ?? []).map(String));
+  // `owner/repo#n` as `afk cos start` stores it; `epicRefs` is the normalised form.
+  const refs = cos.meta?.epicRefs ?? [];
+  const bare = (entry) => String(entry).replace(/^.*#/, "");
+  const repoOf = (entry) => (/^[^/#\s]+\/[^#\s]+#/.test(String(entry)) ? String(entry).split("#")[0].split("/")[1] : null);
+  const projects = new Map((cos.meta?.epics ?? []).map((entry) => [bare(entry), repoOf(entry)]));
+  const inEpics = (run) => (refs.length
+    ? refs.some((ref) => String(ref.epic) === String(run.epic) && (!ref.project || ref.project === run.project))
+    : projects.has(String(run.epic)) && (!projects.get(String(run.epic)) || projects.get(String(run.epic)) === run.project));
   const roots = new Set((cos.meta?.adopted ?? []).map((entry) => entry?.root).filter(Boolean).map((root) => resolve(root)));
   const plan = latestPlan(cos.events ?? [])?.epics ?? [];
-  return runs.filter((run) => epics.has(String(run.epic))
+  return runs.filter((run) => inEpics(run)
     || (run.root && roots.has(resolve(run.root)))
     || plan.some((row) => String(row.epic) === String(run.epic) && (!row.project || row.project === run.project)));
 };
