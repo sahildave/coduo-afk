@@ -93,7 +93,7 @@ export const COMMAND_FLAGS = {
   supervise: ["question", "context", "task", "dag", "consult", "json"],
   heartbeat: ["watch", "interval", "stall"],
   notify: ["workspace"],
-  cos: ["mode", "kind", "ttl", "purpose", "notes-file", "auto", "id", "title", "why", "option", "rec", "from", "file", "append"],
+  cos: ["mode", "kind", "ttl", "purpose", "notes-file", "auto", "id", "title", "why", "option", "rec", "from", "file", "append", "epic"],
   fate: ["epic", "finding", "accepted", "fixed", "dropped", "reason", "by"],
   land: ["repo", "dry-run"],
   hub: ["port", "out", "url", "in", "snapshot"],
@@ -611,7 +611,9 @@ export const HELP_SECTIONS = {
                                Post a question to the hub's Needs you, with the
                                --rec option pre-checked. It stays until a hub
                                response answers [ask:cos:<id>]. An id is
-                               asked once per run.
+                               asked once per run. --epic=<project>#<n> ties it
+                               to an epic; the check-in closes it once that
+                               epic's PR is merged or closed.
   cos ask --id=<slug> --title="<question>" --from=orch-<n> [--option=...]...
                                An Orchestrator's question to the chief of
                                staff; options are optional. \`cos checkin\`

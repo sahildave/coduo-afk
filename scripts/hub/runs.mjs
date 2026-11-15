@@ -30,6 +30,7 @@
 // Test seams: AFK_COS_PEERS (a JSON file standing in for the sweep, as the
 // check-in reads it) and AFK_HUB_PEER_PORTS (a comma list of ports to probe in
 // place of the range, so a test exercises the real probe on its own ports).
+import { execFile } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, readdirSync, realpathSync, renameSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { discoverDashboards } from "../dashboard-process.mjs";
@@ -66,7 +67,25 @@ export const storeRoots = (env = process.env) => {
       if (event.kind === "checkin") for (const run of event.runs ?? []) if (run?.root) roots.push(run.root);
     }
   }
-  return [...new Set(roots)];
+  return [...new Set([...roots, ...startedRoots(env)])];
+};
+
+// Every root a run started in (#49): a run that exits before its first
+// check-in leaves no other trace in the store. Never removed; `listRuns`
+// drops a root whose run has nothing to show.
+const startedPath = (env) => join(cosRoot(env), "started-roots.json");
+const startedRoots = (env) => {
+  const roots = readJson(startedPath(env));
+  return Array.isArray(roots) ? roots.filter((root) => typeof root === "string") : [];
+};
+
+/** Record the checkout root of a run that has started. Throws on a failed write. */
+export const recordStartedRoot = (root, env = process.env) => {
+  const roots = startedRoots(env);
+  if (roots.some((known) => real(known) === real(root))) return;
+  mkdirSync(cosRoot(env), { recursive: true });
+  writeFileSync(`${startedPath(env)}.${process.pid}.tmp`, `${JSON.stringify([...roots, root], null, 2)}\n`);
+  renameSync(`${startedPath(env)}.${process.pid}.tmp`, startedPath(env));
 };
 
 // A file, not a run folder: `storeRoots` skips an entry with no `run.json`.
@@ -134,6 +153,36 @@ export const isLive = (run) => run?.status === "running" || run?.status === "no 
 // closed less than this before the snapshot's `at`.
 const CLOSED_KEPT_MS = 24 * 60 * 60 * 1000;
 
+// Is the epic branch's PR merged or closed on GitHub? A run that exited parked
+// at a gate only knows its local state, so it would wait forever after the
+// owner merged on GitHub. Fail direction: OPEN. Any error keeps the local
+// status. MERGED is cached for the process lifetime, anything else for 3 min.
+const PR_TTL_MS = 3 * 60 * 1000;
+const prCache = new Map();
+
+const ghPr = (root, branch, env) => new Promise((done) => {
+  execFile("gh", ["pr", "view", branch, "--json", "state,number"], { cwd: root, env, timeout: 15000 }, (error, stdout) => {
+    if (error) return done(null);
+    try {
+      const { state, number } = JSON.parse(stdout);
+      done(state ? { state, number } : null);
+    } catch { done(null); }
+  });
+});
+
+/** `{number, state}` when the branch's PR is MERGED or CLOSED, else null. */
+export const endedPr = async (root, branch, env = process.env) => {
+  if (!root || !branch) return null;
+  const key = `${root}\0${branch}`;
+  const hit = prCache.get(key);
+  if (hit && (hit.pr?.state === "MERGED" || Date.now() - hit.at < PR_TTL_MS)) return hit.pr;
+  const answer = await ghPr(root, branch, env);
+  if (!answer) return null;
+  const pr = ["MERGED", "CLOSED"].includes(answer.state) ? answer : null;
+  prCache.set(key, { pr, at: Date.now() });
+  return pr;
+};
+
 /** The run id the hub anchors comments on: `<project>#<epic>`. */
 export const runId = (run) => `${run.project || basename(run.root || "") || "?"}#${run.epic ?? "?"}`;
 
@@ -199,7 +248,13 @@ export const listRuns = async (env = process.env) => {
       source: "state.json",
     });
   }
-  return found.map((peer) => {
+  // An exited run still waiting on a gate may have been merged on GitHub since.
+  const checked = await Promise.all(found.map(async (peer) => {
+    if (peer.source !== "state.json" || !["waits for you", "not answering"].includes(peer.status)) return peer;
+    const pr = await endedPr(peer.root, peer.branch, env);
+    return pr ?{ ...peer, status: "closed", gates: [], pr, port: null } : peer;
+  }));
+  return checked.map((peer) => {
     const run = { ...peer, epic: epicId(peer.epic) };
     return { ...run, id: runId(run), dashboard: run.port ? `http://127.0.0.1:${run.port}/` : null };
   });

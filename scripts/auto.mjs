@@ -110,7 +110,7 @@ import { JEV_TIMEOUT_MS, routeTasks } from "./tier-router.mjs";
 import { roleAgent, roleFor } from "./roles.mjs";
 import { LEDGER_RELATIVE, readLedger, renderLedgerForPrompt } from "./ledger.mjs";
 import { startDashboard } from "./dashboard-process.mjs";
-import { forgetNoDashboard, recordNoDashboard } from "./hub/runs.mjs";
+import { forgetNoDashboard, recordNoDashboard, recordStartedRoot } from "./hub/runs.mjs";
 import { stopProcessesUnder, teardownRecordedLanes } from "./teardown.mjs";
 // Not the local `pidAlive` in runAuto (`kill -0` through a shell), which reads
 // EPERM as dead: this one reads it as alive, which is the question after a
@@ -2137,6 +2137,11 @@ export const runAuto = async ({
       say(`AUTO: warning: could not update the hub's no-dashboard record — ${error.message}`);
     }
   };
+  // The hub lists a run from its root; a run that exits before the first
+  // check-in is found only through this record (#49). Fail direction: OPEN.
+  try { recordStartedRoot(root); } catch (error) {
+    say(`AUTO: warning: could not record this run's root for the hub — ${error.message}`);
+  }
   // Every path that deletes `dashboardSkipped` takes the root off the record.
   const clearDashboardSkipped = () => {
     if (!state.dashboardSkipped) return;

@@ -41,7 +41,7 @@ import {
 } from "./cos/store.mjs";
 
 export const HUB_URL = `http://127.0.0.1:${HUB_PORT}`;
-const VALUE_FLAGS = new Set(["mode", "kind", "ttl", "purpose", "notes-file", "id", "title", "why", "option", "rec", "from", "file"]);
+const VALUE_FLAGS = new Set(["mode", "kind", "ttl", "purpose", "notes-file", "id", "title", "why", "option", "rec", "from", "file", "epic"]);
 // Flags that may repeat; each collects into an array.
 const LIST_FLAGS = new Set(["option"]);
 
@@ -68,6 +68,12 @@ export const parseCos = (argv) => {
 const say = (...lines) => console.log(lines.join("\n"));
 const refuse = (line) => { say(`COS: ${line}`); return 1; };
 const NO_RUN = "no afk cos run is open. Open one with `afk cos start --mode=day|night <epic>...`.";
+
+// `<project>#<n>`, `<owner>/<repo>#<n>` or a bare `<n>` -> { project, epic }, or null.
+export const parseEpicRef = (value) => {
+  const m = /^(?:(?:[\w.-]+\/)?([\w.-]+)#)?(\d+)$/.exec(String(value).trim());
+  return m ? { project: m[1] ?? null, epic: m[2] } : null;
+};
 
 const printFlagged = (run) => { if (run?.flagged.length) say(...flagLines(run.flagged)); };
 
@@ -103,6 +109,9 @@ const start = async ({ flags, positional }, env) => {
     return refuse(`start refused: the check-in could not be installed (${error.message}).`);
   }
   const run = createRun({ root, mode, epics: positional, adopted, env });
+  // createRun (store.mjs) keeps `epics` as given; `epicRefs` is the normalised form the hub matches on.
+  run.meta.epicRefs = positional.map(parseEpicRef).filter(Boolean);
+  writeFileSync(join(run.dir, "run.json"), `${JSON.stringify(run.meta, null, 2)}\n`);
   appendEvent(run.dir, "note", { text: `run opened, mode ${mode}, epics ${positional.join(", ") || "none"}, adopted ${adopted.map((a) => a.epic ?? a.root).join(", ") || "none"}` }, env);
   say(
     `COS: run ${run.id} open (mode ${mode}, check-in every ${CHECKIN_MINUTES[mode]} min by launchd).`,
@@ -156,9 +165,14 @@ const ask = ({ flags }, env) => {
   if (new Set(options.map((o) => o.value)).size !== options.length) return refuse("ask: two options share a value.");
   const rec = typeof flags.rec === "string" ? flags.rec.trim() : null;
   if (flags.rec !== undefined && !options.some((o) => o.value === rec)) return refuse(`ask: --rec=${flags.rec} is not one of the option values (${options.map((o) => o.value).join(", ")}).`);
+  let epic = null;
+  if (flags.epic !== undefined) {
+    epic = typeof flags.epic === "string" ? parseEpicRef(flags.epic) : null;
+    if (!epic) return refuse(`ask: --epic=${flags.epic} is not an epic. Use <project>#<n>, <owner>/<repo>#<n> or <n>.`);
+  }
   const why = typeof flags.why === "string" ? flags.why.trim() : "";
   const asked = (events) => events.some((event) => event.kind === "ask" && event.id === id);
-  const event = appendEvent(run.dir, "ask", { id, title, why, options, rec, ...(from ? { from } : {}) }, env, { unless: asked });
+  const event = appendEvent(run.dir, "ask", { id, title, why, options, rec, ...(from ? { from } : {}), ...(epic ? { epic } : {}) }, env, { unless: asked });
   if (!event) return refuse(`question ${id} is already asked in run ${run.id}. Pick another --id.`);
   if (from) say(`COS: asked cos:${id} from ${from} at ${event.ts}. \`afk cos checkin\` lists it until \`afk cos answer --id=${id}\` closes it; the hub shows it to the owner as a card he can answer: ${HUB_URL}`);
   else say(`COS: asked cos:${id} at ${event.ts}. It shows on the hub until a response answers it: ${HUB_URL}`);

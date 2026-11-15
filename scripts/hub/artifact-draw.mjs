@@ -115,7 +115,10 @@ export const drawHeader = (c) => {
   const kicker = `<span>afk hub · chief of staff</span>${cos ? `<span>run ${esc(cos.id)} · ${esc(cos.mode ?? "open")}</span>` : ""}`;
   const running = runs.filter((r) => !r.closedAt).length;
   const title = esc(`${running} epic${running === 1 ? "" : "s"} running`);
-  const dek = `As of <time datetime="${esc(s.at)}">${hhmm(at)}</time> (${ago} min ago). ${open ? `${open} thing${open === 1 ? "" : "s"} wait${open === 1 ? "s" : ""} for you.` : "Nothing waits for you."}`;
+  const stale = ago >= 90
+    ? `<span class="pill red">This page is ${Math.floor(ago / 60)} h old. The chief of staff has stopped updating it.</span> `
+    : "";
+  const dek = `${stale}As of <time datetime="${esc(s.at)}">${hhmm(at)}</time> (${ago} min ago). ${open ? `${open} thing${open === 1 ? "" : "s"} wait${open === 1 ? "s" : ""} for you.` : "Nothing waits for you."}`;
   const passed = runs.reduce((n, r) => n + (r.progress?.passed ?? 0), 0);
   const tasks = runs.reduce((n, r) => n + (r.progress?.total ?? 0), 0);
   const building = runs.filter(isLive).length;
