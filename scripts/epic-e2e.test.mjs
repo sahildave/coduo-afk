@@ -670,6 +670,23 @@ test("a failed quota read sends that lane to Claude Opus and the next Codex lane
   assert.equal(state.tasks["402"].codexFallbackReason, undefined, "nothing turned Codex off");
 });
 
+// A retry whose worktree reset throws something other than a full disk fails
+// that lane as infra; it does not kill the run.
+test("a retry whose worktree reset fails marks the lane infra_failed instead of throwing", { timeout: 120_000 }, async (t) => {
+  const fx = fixture();
+  t.after(() => rmSync(fx.dir, { recursive: true, force: true }));
+  await routedRun(fx, {
+    tasks: [["401", ["**"]]],
+    quotaProbe: async () => ({ allowed: true, reason: "fresh" }),
+    builder: async ({ worktree }) => {
+      // `git reset --hard` in a directory that is gone: the reset throws.
+      rmSync(worktree, { recursive: true, force: true });
+      return { outcome: "rate_limited", verification: { rateLimited: true, agentExitCode: 1, producedFiles: [], checks: [] }, rateLimit: { resetsAt: (Date.now() - 29_500) / 1000 } };
+    },
+  });
+  assert.equal(stateOf(fx).tasks["401"].lifecycle, "infra_failed");
+});
+
 // #292: exhaustion or a dead login on a Codex lane is retried on Claude Opus
 // within the ordinary builder retry budget; both attempts' models are kept.
 for (const [label, failure, reason] of [

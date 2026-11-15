@@ -2,6 +2,12 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **A failed retry reset fails the lane, not the run (2026-11-15).**
+  `resetForRetry` rethrew any worktree-reset error that was not a full disk,
+  ending the orchestrator on one lane's bad worktree. It now leaves the lane
+  `infra_failed` with the error in the log, the way a full disk already did
+  (`afk reset <id>` to retry). No config change.
+
 - **The fixer no longer turns an `unknown` criterion into `met` (2026-11-15).**
   `withCheckedCriteria` rewrote the verifier's `unknown` to `met` on the
   fixer's own word and the closeout ticked it. Removed. The fixer's

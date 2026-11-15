@@ -3078,12 +3078,16 @@ export const runAuto = async ({
     stopRecordedAgent({ activeWorkers: { [taskId]: state.activeWorkers[taskId] } }, `builder ${taskId}`);
     clearWorkerPid(state, taskId);
     const taskRuntime = state.tasks[taskId];
-    const line = diskFullLine(error);
     taskRuntime.lifecycle = "infra_failed";
-    taskRuntime.diskFull = { at: new Date().toISOString(), where, message: line };
-    say(
-      `AUTO: builder ${taskId} hit a full disk during ${where} — ${line}. Left unmarked (infra_failed); free space, then \`afk reset ${taskId}\`.`,
-    );
+    if (isDiskFull(error)) {
+      const line = diskFullLine(error);
+      taskRuntime.diskFull = { at: new Date().toISOString(), where, message: line };
+      say(
+        `AUTO: builder ${taskId} hit a full disk during ${where} — ${line}. Left unmarked (infra_failed); free space, then \`afk reset ${taskId}\`.`,
+      );
+    } else {
+      say(`AUTO: builder ${taskId} failed during ${where} — ${error.message}. Left unmarked (infra_failed); fix it, then \`afk reset ${taskId}\`.`);
+    }
     recordOutcome(taskId, true, 0, { neverReachedApi: true });
     saveState(state);
   };
@@ -3099,7 +3103,8 @@ export const runAuto = async ({
       });
       return true;
     } catch (error) {
-      if (!isDiskFull(error)) throw error;
+      // Any reset failure is infra, not the ticket and not a reason to end the
+      // run; a full disk additionally keeps its `diskFull` record.
       failLaneOnFullDisk(taskId, error, "the retry's worktree reset");
       return false;
     }
