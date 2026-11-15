@@ -39,6 +39,23 @@
   in the verifier prompt; Step 1b is gone. The gate after the fixer is
   unchanged. No config change.
 
+- **Lane worktrees ignore `.afk-report.json` and `.pnpm-store/` (2026-11-15).**
+  The lane heartbeat is written into whatever directory the lane is in and
+  `git add -A` committed it into task diffs. `createTaskWorktree` now appends
+  both names to the repo's `info/exclude` (shared by every worktree, written
+  once), so they match at any depth and never show in `git status`.
+
+- **Lane prompts forbid stopping processes by pattern (2026-11-15).**
+  A lane ran `pkill`/`killall` and killed a sibling lane's dev server. The
+  builder rules in `prompts/implementer.md` now say to stop only a pid the
+  lane started itself.
+
+- **Every epic end gets a fresh supervisor decision (2026-11-15).**
+  The cached answer for `epic_ended` could not see the head sha or the
+  verifier result, so after a fix and re-review it replayed the old must-fix
+  list. `runSupervisor` now skips the cache lookup for that one event; budget,
+  cost gate and caching for every other event are unchanged.
+
 - **Herdr lanes start in repos Claude Code has not trusted yet (2026-11-12).**
   An interactive `claude` stopped at the workspace trust dialog in each fresh
   lane worktree when the repo's main checkout had no trust record, so `herdr
