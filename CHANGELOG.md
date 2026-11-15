@@ -2,6 +2,11 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **Lane prompts forbid stopping processes by pattern (2026-11-15).**
+  A lane ran `pkill`/`killall` and killed a sibling lane's dev server. The
+  builder rules in `prompts/implementer.md` now say to stop only a pid the
+  lane started itself.
+
 - **Herdr lanes start in repos Claude Code has not trusted yet (2026-11-12).**
   An interactive `claude` stopped at the workspace trust dialog in each fresh
   lane worktree when the repo's main checkout had no trust record, so `herdr
