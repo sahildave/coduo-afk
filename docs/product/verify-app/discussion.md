@@ -108,7 +108,7 @@ Rollout is pilot-first: one repo proves it, then the runner and skills change,
 then the other products. Each repo gets its own epic; there is no single
 cross-repo epic, because the runner runs one repo per epic.
 
-1. [ ] **Pilot epic, shareling** — /coduo-epic in shareling. Tickets: feature
+1. [x] **Pilot epic, shareling** — filed as indhuja/shareling#684 (children #685 core with no UI, #686 feature map and coverage check, #687 human check of NOTCH-01 in Atlas; validate ok, depth 1). The coverage check is a Swift test, so no `.afk-setup` edit is needed. Tickets: feature
        map with IDs; coverage check (an ID with no test, a test with no ID);
        fix the `SharelingKit` UI imports and add the folder/import rule; outcome
        tests for the map rows that change data; a lane gate that runs them;
