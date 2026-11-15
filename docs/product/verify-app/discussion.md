@@ -152,6 +152,101 @@ Claude kept one disagreement: a shared UI driver per platform is still worth
 adding later for proof screenshots. Sahil then raised the CLI-first app idea,
 which is a different kind of CLI from the one Fable rejected (see Session log).
 
+## Entry points, CLI logic, pure-screen features — 2026-11-15
+
+- **Several ways to reach one feature.** The map row lists every way in
+  (`Editor → Save; ⌘S`). One outcome test per feature, because every way in
+  calls the same core function; one short UI test per way in. Removing a way in
+  turns its UI test red, and the lane that removed it deletes the test and the
+  map entry in the same PR. The coverage check fails on an ID with no test and
+  on a test with no ID.
+- **Logic that creeps into a CLI:** input checks, defaults, chained steps
+  (`claim` that also pays), retries, picking a backend from an env var. Kept
+  out by: one command calls one public core function; checks and defaults live
+  in the core; the CLI folder imports only the core's public API (lint rule).
+- **Pure-screen features** change only what is on screen: open the Settings
+  modal, switch tabs, collapse the sidebar, sort a loaded list. UI test only.
+  A theme saved to the account is core.
+- **Tests call the core directly.** The CLI is optional, for people and agents
+  driving the core by hand: try the product before screens exist, reproduce a
+  bug, set up a state before a UI check, show proof in a lane log, become MCP
+  tools later.
+
+## What will fail — adversarial pass, 2026-11-15
+
+1. **Nobody runs it.** The only reason verify-gitback died. Gitback's CI does
+   not run tests today. Every repo needs the outcome tests and UI tests in a
+   gate that blocks a merge, or the rest of this is decoration.
+2. **The core does not exist yet in most apps.** Logic sits in Server Actions,
+   SwiftUI views, React Native screens. Pulling it out is a refactor per
+   product, and doing it everywhere at once is the over-engineering trap. Do it
+   per feature, when a lane touches that feature.
+3. **The CLI and the prototype mock drift apart.** The prototype runs on an
+   in-memory store; the CLI runs on the core. If the mock store and the core
+   do not share one interface, the "merge" at the end is a rewrite. The
+   prototype skill's seam (the store) must be the core's interface, typed once.
+4. **Fakes lie.** Outcome tests run against a GitHub emulator, a mock database,
+   a fake payment provider. A pass proves the core against the fake. One
+   smoke run against the real service per release is still needed.
+5. **Platform UI is the expensive part, and it is where the bugs users see
+   live.** Camera, permissions, notifications, drag and drop, windows. No core
+   test reaches them. On DuoCam most of the risk is there.
+6. **The map becomes paperwork.** If the coverage check is not a hard gate,
+   rows rot like verify-gitback's 75-line feature files. Keep rows one line.
+7. **Lanes weaken tests to go green.** Letting lanes edit tests (the fix for
+   staleness) opens this. The verifier's teeth test is the guard; it has
+   never fired yet, so prove it on the pilot before trusting it.
+8. **UI tests on Mac and Tauri have no shared runner.** e2e has no desktop
+   support; Atlas drives one helper login. Parallel lanes will queue on it.
+
+## Does it work on every platform
+
+| Platform | Core | Outcome tests | CLI | UI smoke test | Weak spot |
+|---|---|---|---|---|---|
+| Web (Next.js) | `src/core/` TS module; Server Actions call it | vitest against emulators | `tsx bin/app.ts` (node) | Playwright or e2e | Server Actions mix auth and logic; split them |
+| Tauri | Rust crate; `#[tauri::command]` calls it | `cargo test` | Rust binary on the same crate (best fit of all) | Atlas (no WebDriver on macOS) | Desktop UI runner is Atlas only |
+| SwiftUI (Mac/iOS) | Swift package, no SwiftUI import | `swift test` / XCTest | `swift run app-cli` (ArgumentParser), Mac only | XCUITest; Atlas for Mac proof | Camera, permissions, windows stay UI-only |
+| React Native / Expo | TS package outside `app/` | jest | `tsx` node CLI if the core avoids native modules | Maestro or e2e; agent-device | Core that imports a native module cannot run in node; keep those behind an interface |
+
+It works on all four if one rule holds: the core never imports the UI
+framework or a native-only module. Where it must (camera, file pickers),
+that piece sits behind an interface the tests fake.
+
+## Flows
+
+**A. New product from scratch (with `coduo-product-prototype`)**
+
+1. Write the feature map first: ID, feature, ways in, proof. One line each.
+2. Define the core interface (the store/seam) from the map. Types only.
+3. Two tracks in parallel:
+   - Core track: implement the core against fakes, an outcome test per map
+     row that changes data, a thin CLI over it.
+   - Prototype track: `coduo-product-prototype` builds the screens on an
+     in-memory store that implements the same interface.
+4. Freeze the prototype (owner approval).
+5. Wire: swap the in-memory store for the core. Add one UI test per way in.
+6. Gate: outcome tests + UI tests + coverage check block every merge.
+
+**B. New feature on an existing product (with the prototype skill)**
+
+1. Add the map rows first (new IDs).
+2. If the feature changes data: core function + outcome test + CLI command.
+3. Prototype the screens on the in-memory store; freeze.
+4. Wire; add a UI test per way in; the ticket names the IDs.
+5. In AFK the lane runs the named IDs and attaches the output; the verifier
+   runs the teeth test.
+
+**C. New feature without the prototype**
+
+1. Add the map rows.
+2. Core function + outcome test (+ CLI command) first, test failing first.
+3. Build the screen directly on the core.
+4. One UI test per way in. Same gate.
+A pure-screen feature skips step 2.
+
+**Edit or remove a feature:** the lane changes the test and the map row in
+the same PR; the coverage check catches orphans.
+
 ## Session log
 
 ### 2026-11-15
