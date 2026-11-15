@@ -2,6 +2,12 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **Lane worktrees ignore `.afk-report.json` and `.pnpm-store/` (2026-11-15).**
+  The lane heartbeat is written into whatever directory the lane is in and
+  `git add -A` committed it into task diffs. `createTaskWorktree` now appends
+  both names to the repo's `info/exclude` (shared by every worktree, written
+  once), so they match at any depth and never show in `git status`.
+
 - **Lane prompts forbid stopping processes by pattern (2026-11-15).**
   A lane ran `pkill`/`killall` and killed a sibling lane's dev server. The
   builder rules in `prompts/implementer.md` now say to stop only a pid the
