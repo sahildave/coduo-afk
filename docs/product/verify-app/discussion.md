@@ -309,6 +309,7 @@ the same PR; the coverage check catches orphans.
   the apps still open on his screen, so run it inside the Atlas helper login.
   Atlas gives isolation; agent-desktop gives the driver. Not tested yet.
 - **Decision:** Mac UI tests run agent-desktop inside the Atlas helper login (Sahil, 2026-11-15). Not tested yet.
+- **Fakes rule shipped to `coduo-implement`** as item 5, "Fake only at the external boundary" (Fable-reviewed; coduo-skills commit fa17ca8, plugin 1.4.1, not pushed). Lanes cannot run a contract test without credentials, so they name each fake no test checks against the real service in their report.
 - **Correction:** mac-directory is a Next.js web app, not a Mac app.
 - **Pilot candidates:** shareling already has the pattern: `SharelingKit`
   (core), `SharelingCLI` (the `shareling` command and an MCP server on the same
