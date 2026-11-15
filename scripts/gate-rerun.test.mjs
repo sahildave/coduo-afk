@@ -88,7 +88,14 @@ const repoWith = ({ failRuns, failOutput }) => {
   }));
   return {
     repo, git, script,
-    runs: () => (existsSync(counter) ? readFileSync(counter, "utf8").split("\n").filter(Boolean).length : 0),
+    // The baseline's own runs. Not the script's counter: the closeout's
+    // pre-review gate (#59, `kind: "fix"`) runs the same script over the tip.
+    runs: () => {
+      const path = join(repo, ".afk", "runs", "gate-events.jsonl");
+      return existsSync(path)
+        ? readFileSync(path, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)).filter((event) => event.kind === "baseline").length
+        : 0;
+    },
     head: () => git("rev-parse", "HEAD").stdout.trim(),
     state: () => JSON.parse(readFileSync(join(repo, ".afk", "state.json"), "utf8")),
     log: () => readFileSync(join(repo, ".afk", "agent-auto.log"), "utf8"),

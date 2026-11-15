@@ -71,6 +71,24 @@ AUTO: closeout tip `5e7adfc…` gated: **yes** — no fix commit; the full chain
   `baseline.test.mjs:551,600` already read `kind === "baseline"` gate events;
   the closeout's run records `kind: "fix"`, so counting by kind separates the two.
 
+## Fix (applied)
+
+- `runs()` in both files counts gate events with `kind === "baseline"`, and
+  `rustRuns()` counts the baseline events that ran the Rust command.
+  `baseline.test.mjs` keeps the old counter as `chainRuns()` for the one
+  fixture check that is about any chain run.
+- Five more assertions were hidden behind the count failures and were stale for
+  the same reason. Two fix-gate tests expected 1 baseline run where the 1 was
+  the fix gate's own run; they now expect 0. Two skip-log regexes now accept the
+  closeout's green record, which is newer than the baseline's. The status-flush
+  test removes the closeout's `gate.json` before its restart, so it still
+  exercises the status-flush skip it was written for (#760: a run that stopped
+  before its closeout).
+- Teeth: with the baseline skip turned off in `auto.mjs`
+  (`baselineSkipped = false && …`), five skip tests go red (`2 !== 1`,
+  `1 !== 0`). Restored, `baseline.test.mjs` plus `gate-rerun.test.mjs` pass
+  42/42. Full `node afk.mjs selftest`: 2070 tests, 2070 pass, 0 fail.
+
 ## Not a cause
 
 The pre-existing `wave-driver` failure #59's message mentions

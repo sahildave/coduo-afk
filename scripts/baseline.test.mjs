@@ -11,7 +11,7 @@ import {
   DEFAULT_BASELINE_TIMEOUT_MS, onlyStatusFlushSince, runAuto, runBaselineChecks, sameGreenBaseline,
 } from "./auto.mjs";
 import { holdGateLock, readConfig, writeConfig } from "./test-helpers.mjs";
-import { runCloseoutGate } from "./fixer.mjs";
+import { closeoutGatePath, runCloseoutGate } from "./fixer.mjs";
 import * as lib from "./lib.mjs";
 // Namespaces, so a missing export fails its own test rather than the file.
 import * as auto from "./auto.mjs";
@@ -90,12 +90,22 @@ const baselineRepo = ({ pendingStatusUpdates, rust = false } = {}) => {
     ...(pendingStatusUpdates ? { pendingStatusUpdates } : {}),
   }));
   const count = (file) => (existsSync(file) ? readFileSync(file, "utf8").split("\n").filter(Boolean).length : 0);
-  const runs = () => count(counter);
-  const rustRuns = () => count(rustCounter);
+  // Every run of the chain, from any gate. The closeout's pre-review gate (#59)
+  // runs the same commands over the tip, so this is not a baseline count.
+  const chainRuns = () => count(counter);
+  // The baseline's own runs, as the gate events record them: the closeout's
+  // gates are `kind: "fix"`, so they never count here.
+  const baselines = () => {
+    const path = join(repo, ".afk", "runs", "gate-events.jsonl");
+    return (existsSync(path) ? readFileSync(path, "utf8").split("\n").filter(Boolean).map((line) => JSON.parse(line)) : [])
+      .filter((event) => event.kind === "baseline");
+  };
+  const runs = () => baselines().length;
+  const rustRuns = () => baselines().filter((event) => (event.commands ?? []).some((check) => check.command === rustCommand)).length;
   const head = () => git("rev-parse", "HEAD").stdout.trim();
   const state = () => JSON.parse(readFileSync(join(repo, ".afk", "state.json"), "utf8"));
   const log = () => readFileSync(join(repo, ".afk", "agent-auto.log"), "utf8");
-  return { repo, git, command, rustCommand, runs, rustRuns, head, state, log, cleanup: () => rmSync(repo, { recursive: true, force: true }) };
+  return { repo, git, command, rustCommand, chainRuns, runs, rustRuns, head, state, log, cleanup: () => rmSync(repo, { recursive: true, force: true }) };
 };
 
 const DAG = {
@@ -273,7 +283,7 @@ test("a restart at the same head with the same commands skips the baseline and s
     assert.equal(fx.head(), green, "fixture precondition: the first run left the head where it went green");
     assert.equal(await start(fx.repo), 0);
     assert.equal(fx.runs(), 1, "the second start re-ran a baseline nothing had changed");
-    assert.match(fx.log(), /baseline check skipped — it went green at [0-9a-f]{12} with these 1 command\(s\)/);
+    assert.match(fx.log(), /baseline check skipped — (it|the closeout fix gate) went green at [0-9a-f]{12} with these 1 command\(s\)/);
   } finally {
     fx.cleanup();
   }
@@ -294,6 +304,10 @@ test("the runner's own status commit between two starts does not cost a second b
       ["docs/progress/203.md"],
       "fixture precondition: and nothing else",
     );
+    // The closeout's pre-review gate (#59) left a green record at the flushed
+    // head. Drop it, so the only green is the baseline's from before the flush:
+    // #760's shape, a run that stopped before its closeout.
+    rmSync(closeoutGatePath(fx.repo, "203"));
     assert.equal(await start(fx.repo), 0);
     assert.equal(fx.runs(), 1, "a status-flush commit re-ran the baseline");
     assert.match(fx.log(), /baseline check skipped — .*only the runner's status commits have landed since/);
@@ -400,10 +414,10 @@ test("a relaunch at the head a closeout fix gate passed skips the baseline (#176
   const fx = baselineRepo();
   try {
     await passFixGate(fx);
-    assert.equal(fx.runs(), 1, "fixture precondition: the gate ran the chain once");
+    assert.equal(fx.chainRuns(), 1, "fixture precondition: the gate ran the chain once");
     assert.equal(fx.state().lastGreenBaseline, undefined, "fixture precondition: no baseline has ever gone green");
     assert.equal(await start(fx.repo), 0);
-    assert.equal(fx.runs(), 1, "the baseline re-ran over the tree the fix gate had just passed");
+    assert.equal(fx.runs(), 0, "the baseline re-ran over the tree the fix gate had just passed");
     assert.match(fx.log(), /baseline check skipped — the closeout fix gate went green at [0-9a-f]{12}/);
   } finally {
     fx.cleanup();
@@ -422,7 +436,7 @@ test("the runner's own artefact sweep after a green fix gate does not cost a bas
       "fixture precondition: the sweep commit touches only .agents/evidence/",
     );
     assert.equal(await start(fx.repo), 0);
-    assert.equal(fx.runs(), 1, "the runner's own sweep commit re-ran the baseline");
+    assert.equal(fx.runs(), 0, "the runner's own sweep commit re-ran the baseline");
     assert.match(fx.log(), /baseline check skipped — .*only the runner's status commits have landed since/);
   } finally {
     fx.cleanup();
@@ -435,7 +449,7 @@ test("a red fix gate, or a real commit after a green one, still runs the baselin
     await passFixGate(fx);
     commitFile(fx, "src/later.js", "export {};\n");
     assert.equal(await start(fx.repo), 0);
-    assert.equal(fx.runs(), 2, "a real commit after the gate must run the baseline");
+    assert.equal(fx.runs(), 1, "a real commit after the gate must run the baseline");
   } finally {
     fx.cleanup();
   }
@@ -666,7 +680,7 @@ test("a relaunch whose tree differs from the green baseline only by integrated t
     assert.notEqual(fx.head(), green, "fixture precondition: the head moved past the green baseline");
     assert.equal(await start(fx.repo), 0);
     assert.equal(fx.runs(), 1, "an integrated merge re-ran the baseline");
-    assert.match(fx.log(), /baseline check skipped — it went green at [0-9a-f]{12} .*only integrated task merges \(204\) and the runner's status commits have landed since/);
+    assert.match(fx.log(), /baseline check skipped — (it|the closeout fix gate) went green at [0-9a-f]{12} .*only integrated task merges \(204\) and the runner's status commits have landed since/);
   } finally {
     fx.cleanup();
   }
