@@ -131,24 +131,37 @@ const zoneOffsetMs = (zone, ms) => {
 
 const wallToEpochMs = (y, mo, d, h, mi, zone) => {
   if (!zone) return new Date(y, mo, d, h, mi).getTime();
-  const guess = Date.UTC(y, mo, d, h, mi);
-  return guess - zoneOffsetMs(zone, guess);
+  const wall = Date.UTC(y, mo, d, h, mi);
+  // Second pass: the offset at the answer, not at the guess, holds across DST.
+  const first = wall - zoneOffsetMs(zone, wall);
+  return wall - zoneOffsetMs(zone, first);
 };
+
+// A reset this recently past is the one the message meant, not tomorrow's:
+// rolling it forward would fail a lane that should simply retry now.
+const JUST_PASSED_MS = 3 * 3600_000;
+const RESET_RE = /(?:try again at|resets?(?: at)?)\s+(?:(?:([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?)\s*)?(?:(\d{1,2})(?::(\d{2}))?\s*([ap]m)?)?(?:\s*\(([A-Za-z_]+(?:\/[A-Za-z0-9_+-]+)+|UTC)\))?/gi;
 
 // Reset moment (epoch seconds) named in a limit message, or null. Shapes seen:
 // "try again at 5:04 PM.", "try again at Oct 2nd, 2026 12:47 AM.",
 // "try again at Aug 16th", "resets 3pm (Asia/Kolkata)", "resets at 5:30am".
+// Fail direction: null. An unread message falls back to the old 5-minute
+// retry, which only wastes time; a wrong far-future reset would fail the lane.
 export const parseResetTime = (text, now = Date.now()) => {
-  const m = /(?:try again at|resets?(?: at)?)\s+(?:(?:([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?)\s*)?(?:(\d{1,2})(?::(\d{2}))?\s*([ap]m)?)?(?:\s*\(([A-Za-z_]+\/[A-Za-z_]+|UTC)\))?/i.exec(text ?? '');
-  if (!m) return null;
+  for (const m of String(text ?? '').matchAll(RESET_RE)) {
+    const at = resetFromMatch(m, now);
+    if (at !== null) return at;
+  }
+  return null;
+};
+
+const resetFromMatch = (m, now) => {
   const [, mon, day, year, hr, min, ap, zone] = m;
   if (!mon && !hr) return null;
   if (!mon && !ap && !min) return null;
-  let h = 0;
-  if (hr !== undefined) {
-    h = Number(hr) % 12 + (ap?.toLowerCase() === 'pm' ? 12 : 0);
-    if (!ap) h = Number(hr);
-  }
+  if (ap && (Number(hr) < 1 || Number(hr) > 12)) return null;
+  // 12-hour clock when am/pm is given ("12am" is 0, "12pm" is 12), else 24-hour.
+  const h = ap ? (Number(hr) % 12) + (ap.toLowerCase() === 'pm' ? 12 : 0) : Number(hr ?? 0);
   const mi = Number(min ?? 0);
   if (h > 23 || mi > 59) return null;
   try {
@@ -159,10 +172,11 @@ export const parseResetTime = (text, now = Date.now()) => {
       const mo = MONTHS.indexOf(mon.toLowerCase());
       if (mo < 0) return null;
       ms = at(year ? Number(year) : nowDate.getFullYear(), mo, Number(day));
-      if (!year && ms < now) ms = at(nowDate.getFullYear() + 1, mo, Number(day));
+      // A date with no time is midnight: today's date is past by up to a day.
+      if (!year && ms < now - (hr === undefined ? 24 * 3600_000 : JUST_PASSED_MS)) ms = at(nowDate.getFullYear() + 1, mo, Number(day));
     } else {
       ms = at(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate());
-      if (ms < now) ms += 24 * 3600_000;
+      if (ms < now - JUST_PASSED_MS) ms += 24 * 3600_000;
     }
     return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
   } catch {
@@ -171,6 +185,7 @@ export const parseResetTime = (text, now = Date.now()) => {
 };
 
 // Epoch seconds of a reset that lies beyond the wait budget left, else null.
+// Fail direction: null (keep retrying) whenever there is no reset to read.
 export const quotaExhaustedUntil = (rateLimit, waitedMs, budgetMs, now = Date.now()) => {
   if (typeof rateLimit?.resetsAt !== 'number') return null;
   return rateLimit.resetsAt * 1000 - now > budgetMs - waitedMs ? rateLimit.resetsAt : null;

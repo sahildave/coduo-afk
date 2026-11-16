@@ -15,11 +15,11 @@ test("reads the reset from the message text, in its named zone", () => {
   assert.equal(at * 1000, Date.UTC(2026, 10, 16, 1, 0));
 });
 
-test("reads month-day shapes and rolls a past time to the next day", () => {
+test("reads month-day shapes and rolls a long-past time forward", () => {
   assert.equal(parseResetTime("try again at Oct 2nd, 2026 12:47 AM.", now) !== null, true);
   const aug = parseResetTime("try again at Aug 16th (UTC)", now);
   assert.equal(new Date(aug * 1000).getUTCFullYear(), 2027);
-  assert.equal(parseResetTime("resets 3pm (UTC)", now) * 1000, Date.UTC(2026, 10, 16, 15, 0));
+  assert.equal(parseResetTime("resets 9am (UTC)", now) * 1000, Date.UTC(2026, 10, 16, 9, 0));
   assert.equal(parseResetTime("rate limit exceeded", now), null);
 });
 
@@ -36,4 +36,18 @@ test("a reset past the wait budget is exhausted; one inside it is not", () => {
   assert.equal(quotaExhaustedUntil(near, 0, 12 * H, now), null);
   assert.equal(quotaExhaustedUntil(near, 11 * H, 12 * H, now), near.resetsAt);
   assert.equal(quotaExhaustedUntil({}, 0, 12 * H, now), null);
+});
+
+test("a reset that has just passed is today's, not tomorrow's or next year's", () => {
+  const t = Date.UTC(2026, 10, 16, 17, 4, 20);
+  assert.equal(parseResetTime("resets 5:04pm (UTC)", t) * 1000, Date.UTC(2026, 10, 16, 17, 4));
+  assert.equal(new Date(parseResetTime("try again at Nov 16th (UTC)", t) * 1000).getUTCFullYear(), 2026);
+});
+
+test("three-segment zones, DST days, a later match and 13pm", () => {
+  assert.equal(parseResetTime("resets 6:30am (America/Argentina/Buenos_Aires)", now) * 1000, Date.UTC(2026, 10, 16, 9, 30));
+  // 2027-03-14 is the US spring-forward day: 3:30am EDT is 07:30Z.
+  assert.equal(parseResetTime("try again at Mar 14th, 2027 3:30 AM (America/New_York)", now) * 1000, Date.UTC(2027, 2, 14, 7, 30));
+  assert.equal(parseResetTime("Your limit resets soon. try again at 5pm (UTC)", now) * 1000, Date.UTC(2026, 10, 15, 17, 0));
+  assert.equal(parseResetTime("resets 13pm (UTC)", now), null);
 });

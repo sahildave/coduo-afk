@@ -3204,9 +3204,9 @@ export const runAuto = async ({
       if (resetForRetry(taskId, taskRuntime))
         say(`AUTO: builder ${taskId} on Codex failed: ${codexLaneFallback}.`);
     } else if (result.outcome === "rate_limited" && !codexLaneFallback && quotaExhaustedUntil(result.rateLimit, taskRuntime.rateLimitWaitedMs ?? 0, LIMIT_TOTAL_MAX_MS)) {
-      taskRuntime.lifecycle = "failed";
-      queueStatus(task, "failed");
-      say(`AUTO: builder ${taskId}: quota exhausted until ${quotaResetLabel(result.rateLimit.resetsAt)}; not retrying.`);
+      // A quota is the account, not the ticket: unmarked, dependants unblocked.
+      taskRuntime.lifecycle = "infra_failed";
+      say(`AUTO: builder ${taskId}: quota exhausted until ${quotaResetLabel(result.rateLimit.resetsAt)}; not retrying. Left unmarked (infra_failed); \`afk reset ${taskId}\` after the reset.`);
     } else if (result.outcome === "rate_limited" && !codexLaneFallback) {
       const delay = retryDelay(result.rateLimit, taskRuntime);
       if (taskRuntime.rateLimitWaitedMs > LIMIT_TOTAL_MAX_MS) {

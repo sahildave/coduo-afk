@@ -104,8 +104,9 @@ by the 12h `LIMIT_TOTAL_MAX_MS` cap.
 `parseResetTime` in `scripts/agent-stats.mjs` now reads the reset out of the
 message text when the structured field is absent ("try again at 5:04 PM",
 "try again at Aug 16th", "resets 6:30am (Asia/Calcutta)"). A reset inside the
-wait budget times the retry to it; one past the budget fails the builder or the
-merger at once with "quota exhausted until <date>". Held by
+12h `LIMIT_TOTAL_MAX_MS` budget times the retry to it; one past it leaves the
+builder `infra_failed` (the merger `integration_failed`) at once with "quota
+exhausted until <date>". Held by
 `scripts/quota-reset.test.mjs`.
 
 ### 5. The merger agent has no prompt-size guard — FIXED
