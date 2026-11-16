@@ -1,7 +1,8 @@
 // Continuous AFK task factory: parallel isolated builders, serialized integration.
 import { spawnSync } from "node:child_process";
 import { appendFileSync, existsSync, readFileSync, renameSync, rmSync, statfsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
+import { createLaneAdmission, registerLane } from "./lane-admission.mjs";
 import { fileURLToPath } from "node:url";
 import {
   agentConfig,
@@ -1417,6 +1418,7 @@ export const runAuto = async ({
     console.log(line);
     appendFileSync(logPath, `${line}\n`);
   };
+  const admission = createLaneAdmission({ config, say });
   // One line per role run whose later replies came from a model other than the
   // one its session started on. The builder logs its own (scripts/worker.mjs); every other
   // role's record comes back here. scripts/model-check.mjs.
@@ -2600,6 +2602,7 @@ export const runAuto = async ({
       attempt: taskRuntime.builderAttempt,
       dispatchAttempt,
     };
+    if (admission.enabled) state.activeWorkers[task.id].laneFile = registerLane({ project: basename(root), epic: dag.epic?.id ?? null, taskId: task.id });
     saveState(state);
     const current = taskRuntime.builderRuns.at(-1);
     say(
@@ -4467,6 +4470,7 @@ export const runAuto = async ({
           withProbeReservations(state),
           Date.now(),
           explicitTaskId,
+          admission.machineSlots(Object.keys(state.activeWorkers ?? {}).length),
         );
         // After the builders start, so the log reads in the order it happened:
         // the lane a task lost to is named as running by the line above it.

@@ -1,5 +1,6 @@
 import { lifecycleOf, ownScope, ownsOverlap, shellQuote } from './lib.mjs';
 import { USES_INFISICAL_RUN } from './infisical.mjs';
+import { releaseLane } from './lane-admission.mjs';
 
 // `awaiting_acceptance` is a TASK lifecycle, not only an epic one. A
 // `gate: after` task is a human acceptance gate — by definition it has no
@@ -485,8 +486,8 @@ const scopeConflict = (task, claimed) => {
  * operator who named one task is present, and silently starting nothing would
  * read as the runner being broken.
  */
-export const planBuilderBatch = (dag, config, state, now = Date.now(), explicitTaskId = null) => {
-  const slots = freeBuilderSlots(config, state);
+export const planBuilderBatch = (dag, config, state, now = Date.now(), explicitTaskId = null, machineSlots = Infinity) => {
+  const slots = Math.min(freeBuilderSlots(config, state), machineSlots);
   const runnable = runnableTasks(dag, state, now, explicitTaskId);
   if (explicitTaskId) return { picked: runnable.slice(0, slots), deferred: [] };
   const claimed = activeClaims(dag, state);
@@ -567,6 +568,7 @@ export const recordWorkerPid = (state, id, pid) => {
 };
 
 export const clearWorkerPid = (state, id) => {
+  releaseLane(state.activeWorkers[id]?.laneFile);
   delete state.tasks[id]?.pid;
   delete state.activeWorkers[id];
 };
