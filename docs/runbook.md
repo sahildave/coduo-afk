@@ -689,8 +689,7 @@ the threshold, or `false` to turn the wait off.
 Lane starts are also capped across every epic on the machine. Each live lane
 writes a file in `~/.afk-claude/lanes/`; a runner starts no lane past
 `maxLanesMachine` (default 8) counted over all runners, and none while macOS
-memory pressure is warn or critical or the 1-minute load is at or over the core
-count. It reopens after 3 clean readings (5 s apart). The deferred lane stays
+memory pressure is warn or critical. It reopens after 3 clean readings (5 s apart). The deferred lane stays
 pending.
 
 ```

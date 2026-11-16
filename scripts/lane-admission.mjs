@@ -6,14 +6,15 @@
 // counts the files of other runners whose pid is alive and not reused (the same
 // check the gate lock uses), and removes the ones that are not.
 //
-// Admission also closes while the machine is under pressure (macOS memory
-// pressure warn/critical, or 1-minute load at or over the core count) and
-// reopens only after 3 clean readings in a row.
+// Admission also closes while macOS memory pressure is warn or critical, and
+// reopens only after 3 clean readings in a row. Load average is not a signal:
+// a busy desktop sits over the core count with no lanes running, and the gate
+// has its own quiet-host wait (gate-lock.mjs).
 //
 // Fail direction: OPEN. An unreadable sysctl, an unwritable lanes directory or
 // a non-darwin host admits lanes as before: a slow machine beats a stalled epic.
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { availableParallelism, loadavg, platform } from 'node:os';
+import { platform } from 'node:os';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pidAlive } from './dashboard-data.mjs';
@@ -94,7 +95,7 @@ const PRESSURE_NAME = { 2: 'warn', 4: 'critical' };
  */
 export const createLaneAdmission = ({
   config, env = process.env, dir = lanesDir(), say = console.log,
-  load = () => loadavg()[0], pressure = memoryPressureLevel, cores = availableParallelism(),
+  pressure = memoryPressureLevel,
   alive = pidAlive, startedAt = processStartedMs, now = Date.now, refreshMs = ADMISSION_REFRESH_MS,
 } = {}) => {
   const cap = maxLanesMachine(config, env);
@@ -108,9 +109,7 @@ export const createLaneAdmission = ({
     last = now();
     others = countOtherLanes({ dir, alive, startedAt });
     const level = Number(pressure());
-    const current = Number(load());
-    const reason = PRESSURE_NAME[level] ? `memory pressure ${PRESSURE_NAME[level]}`
-      : Number.isFinite(current) && current >= cores ? `load ${current.toFixed(1)} at or over ${cores} cores` : null;
+    const reason = PRESSURE_NAME[level] ? `memory pressure ${PRESSURE_NAME[level]}` : null;
     const where = `(${others.epics + 1} epics, ${others.lanes + own} machine lanes)`;
     if (reason) {
       clean = 0;

@@ -15,7 +15,7 @@ const make = (dir, over = {}) => {
   const lines = [];
   let t = 0;
   const admission = createLaneAdmission({
-    config: {}, env: {}, dir, say: (l) => lines.push(l), load: () => 0, pressure: () => 1, cores: 12,
+    config: {}, env: {}, dir, say: (l) => lines.push(l), pressure: () => 1,
     alive: (pid) => pid < 90000, startedAt: () => null, now: () => (t += 10_000), ...over,
   });
   return { admission, lines };
@@ -54,9 +54,9 @@ test("memory pressure warn closes admission", () => {
   assert.match(lines[0], /lane admission closed: memory pressure warn \(1 epics, 0 machine lanes\)\. Waiting\./);
 });
 
-test("load at the core count closes admission", () => {
-  const { admission } = make(scratch(), { load: () => 12 });
-  assert.equal(admission.machineSlots(0), 0);
+test("high load alone does not close admission", () => {
+  const { admission } = make(scratch(), { pressure: () => 1, load: () => 40 });
+  assert.equal(admission.machineSlots(0), 8);
 });
 
 test("reopens after 3 clean readings, not 2", () => {
