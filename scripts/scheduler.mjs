@@ -1,5 +1,6 @@
 import { lifecycleOf, ownScope, ownsOverlap, shellQuote } from './lib.mjs';
 import { USES_INFISICAL_RUN } from './infisical.mjs';
+import { releaseLane } from './lane-admission.mjs';
 
 // `awaiting_acceptance` is a TASK lifecycle, not only an epic one. A
 // `gate: after` task is a human acceptance gate — by definition it has no
@@ -291,7 +292,9 @@ export const clearTaskRuntime = (state, id) => {
   // measured against this map — so a reset that leaves it consumes a slot with a
   // ghost. Two orphaned lanes with null pids filled both slots of a
   // `max_parallel: 2` epic: `afk status` showed six pending tasks, the restart
-  // admitted nobody, and the only escape was deleting the state file.
+  // admitted nobody, and the only escape was deleting the state file. Its
+  // machine lane file goes with it, or other runners count the ghost too.
+  releaseLane(state.activeWorkers?.[id]?.laneFile);
   delete state.activeWorkers?.[id];
   // (#215) A lane red held for a retry belongs to the attempts just cleared.
   delete state.tasks[id].laneDefect;
@@ -485,8 +488,8 @@ const scopeConflict = (task, claimed) => {
  * operator who named one task is present, and silently starting nothing would
  * read as the runner being broken.
  */
-export const planBuilderBatch = (dag, config, state, now = Date.now(), explicitTaskId = null) => {
-  const slots = freeBuilderSlots(config, state);
+export const planBuilderBatch = (dag, config, state, now = Date.now(), explicitTaskId = null, machineSlots = Infinity) => {
+  const slots = Math.min(freeBuilderSlots(config, state), machineSlots);
   const runnable = runnableTasks(dag, state, now, explicitTaskId);
   if (explicitTaskId) return { picked: runnable.slice(0, slots), deferred: [] };
   const claimed = activeClaims(dag, state);
@@ -567,6 +570,7 @@ export const recordWorkerPid = (state, id, pid) => {
 };
 
 export const clearWorkerPid = (state, id) => {
+  releaseLane(state.activeWorkers[id]?.laneFile);
   delete state.tasks[id]?.pid;
   delete state.activeWorkers[id];
 };

@@ -880,6 +880,10 @@ export const main = async (argv, { backend } = {}) => {
     // Nor wait for the host to quiet (#223): the suite's own parallel files are
     // the load. A test that exercises the wait sets its own threshold.
     env.AFK_QUIET_HOST_LOAD = "off";
+    // Nor count or gate lanes machine-wide: the suite's parallel runners would
+    // count each other's lanes. (AFK_GATE_LOCK_DIR above already keeps the
+    // lanes directory off ~/.afk-claude.)
+    env.AFK_MAX_LANES_MACHINE = "off";
     // The self-test suite asserts BOTH backends explicitly, so it must not be
     // reconfigured by whichever executable launched it — otherwise
     // `afk-codex selftest` would fail every Claude command assertion, and the

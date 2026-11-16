@@ -686,6 +686,20 @@ AUTO: baseline gate waiting for a quiet host: load 24.0, threshold 20. Set `quie
 It gives up after 30 minutes and runs anyway. Set `quietHostLoad: <n>` to move
 the threshold, or `false` to turn the wait off.
 
+Lane starts are also capped across every epic on the machine. Each live lane
+writes a file in `~/.afk-claude/lanes/`; a runner starts no lane past
+`maxLanesMachine` (default 8) counted over all runners, and none while macOS
+memory pressure is warn or critical. It reopens after 3 clean readings (5 s apart). The deferred lane stays
+pending.
+
+```
+AUTO: lane admission closed: memory pressure warn (3 epics, 7 machine lanes). Waiting.
+```
+
+Set `maxLanesMachine: <n>` in `.afk-setup/config.yaml`, or `AFK_MAX_LANES_MACHINE`
+(wins; `off` or `false` turns the cap and the pressure check off). Fail direction:
+open, so an unreadable sysctl or an unwritable lanes directory admits lanes.
+
 ## 11. `afk status` says "gate rerun · baseline · … · environment (high)"
 
 **What it means.** A baseline went red, and its output had a line that names

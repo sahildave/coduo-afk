@@ -59,7 +59,7 @@ const START_TOLERANCE_MS = 3_000;
  * alone would then wait behind it forever. Unknown either way reads as the
  * same process: the wait goes on, as before.
  */
-const pidReused = (holder, startedAt) => {
+export const pidReused = (holder, startedAt) => {
   const recorded = Date.parse(holder?.pidStartedAt ?? '');
   if (!Number.isFinite(recorded)) return false;
   const actual = startedAt(holder.pid);
