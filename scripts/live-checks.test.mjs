@@ -690,7 +690,8 @@ test("a Codex quota rejection is read as a rate limit, not as a bad ticket", () 
   assert.equal(stats.result, "failed");
   assert.ok(complete, "turn.failed closes the stream");
   assert.match(codexStreamShape(codexFixture("rate-limit")).failureText, /hit your usage limit/);
-  assert.equal(stats.rateLimit.resetsAt, undefined, "no machine-readable reset — failure mode 4");
+  // No machine-readable reset; the wall-clock time in the message is parsed instead (A#4).
+  assert.equal(typeof stats.rateLimit.resetsAt, "number", "reset read from the message text");
 });
 
 test("a Codex authentication failure is read as auth, not as a rate limit", () => {

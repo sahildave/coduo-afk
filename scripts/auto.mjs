@@ -105,6 +105,7 @@ import { restoreMain, runIntegration } from "./integrate.mjs";
 import { classifyGateFailure, earnsGateRerun } from "./supervisor.mjs";
 import { infisicalBlocker, infisicalSessionMissing, usesInfisicalRun } from "./infisical.mjs";
 import { modelSwitchLine } from "./model-check.mjs";
+import { quotaExhaustedUntil } from "./agent-stats.mjs";
 import { closeHerdrEpic, closeHerdrLane } from "./runtime-herdr.mjs";
 import { builderRoute, checkCodexQuota, checkProviderQuotas, routingTiers, tierDispatch } from "./builder-routing.mjs";
 import { JEV_TIMEOUT_MS, routeTasks } from "./tier-router.mjs";
@@ -482,6 +483,8 @@ export const timeoutOutcome = (verification, timeoutMs) => {
 const LIMIT_FALLBACK_MS = 5 * 60_000;
 const LIMIT_MAX_SLEEP_MS = 20 * 60_000;
 const LIMIT_TOTAL_MAX_MS = 12 * 60 * 60_000;
+const quotaResetLabel = (epochSec) =>
+  new Date(epochSec * 1000).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZoneName: "short" });
 
 function compactVerification(verification) {
   return {
@@ -3203,6 +3206,10 @@ export const runAuto = async ({
       saveState(state);
       if (resetForRetry(taskId, taskRuntime))
         say(`AUTO: builder ${taskId} on Codex failed: ${codexLaneFallback}.`);
+    } else if (result.outcome === "rate_limited" && !codexLaneFallback && quotaExhaustedUntil(result.rateLimit, taskRuntime.rateLimitWaitedMs ?? 0, LIMIT_TOTAL_MAX_MS)) {
+      // A quota is the account, not the ticket: unmarked, dependants unblocked.
+      taskRuntime.lifecycle = "infra_failed";
+      say(`AUTO: builder ${taskId}: quota exhausted until ${quotaResetLabel(result.rateLimit.resetsAt)}; not retrying. Left unmarked (infra_failed); \`afk reset ${taskId}\` after the reset.`);
     } else if (result.outcome === "rate_limited" && !codexLaneFallback) {
       const delay = retryDelay(result.rateLimit, taskRuntime);
       if (taskRuntime.rateLimitWaitedMs > LIMIT_TOTAL_MAX_MS) {
@@ -3497,6 +3504,11 @@ export const runAuto = async ({
       // over one branch. `refreshEpicPr` never throws.
       if (pr === PR_EACH) prRefresh = prRefresh.then(() => refreshEpicPr());
       recordOutcome(taskId, false);
+    } else if (result.outcome === "rate_limited" && quotaExhaustedUntil(result.rateLimit, taskRuntime.integrationRateLimitWaitedMs ?? 0, LIMIT_TOTAL_MAX_MS)) {
+      taskRuntime.lifecycle = "integration_failed";
+      queueStatus(task, "integration_failed");
+      flushStatuses();
+      say(`AUTO: integration ${taskId}: quota exhausted until ${quotaResetLabel(result.rateLimit.resetsAt)}; not retrying; branch/worktree retained.`);
     } else if (result.outcome === "rate_limited") {
       const delay = retryDelay(result.rateLimit, taskRuntime);
       taskRuntime.integrationRateLimitWaitedMs =

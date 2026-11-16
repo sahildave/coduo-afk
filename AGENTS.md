@@ -30,7 +30,7 @@ those descriptions only, not over that project's coding standards or review rule
 
 Found while running this runner against a real project (Lumina, 24 tasks). Each
 one cost real time or real work. They are recorded here so the next change to the
-relevant file starts from the failure, not from scratch. Five are fixed and held
+relevant file starts from the failure, not from scratch. Eight are fixed and held
 by a test; one is open.
 
 **Fail direction.** Every guard here names which error is worse and fails the
@@ -93,18 +93,21 @@ Held by "the DAG's task list is folded into runtime state on restart" and
 "reconciling never overwrites a lifecycle state already holds" in
 `scripts/selftest.mjs`.
 
-### 4. A hard quota is retried as if it were a soft rate limit — OPEN
+### 4. A hard quota is retried as if it were a soft rate limit — FIXED
 
-`retryDelay` in `scripts/auto.mjs` falls back to `LIMIT_FALLBACK_MS` when the
-provider sends no machine-readable `resetsAt`. Observed: a reply of
+`retryDelay` in `scripts/auto.mjs` fell back to `LIMIT_FALLBACK_MS` when the
+provider sent no machine-readable `resetsAt`. Observed: a reply of
 `You've hit your usage limit ... try again at Aug 16th` — six days out — put all
-three builders into a 5-minute retry loop that could never succeed. Nothing in
-the log distinguished this from an ordinary transient limit.
+three builders into a 5-minute retry loop that could never succeed, bounded only
+by the 12h `LIMIT_TOTAL_MAX_MS` cap.
 
-The 12h `LIMIT_TOTAL_MAX_MS` cap bounds the damage, so this now wastes a day
-rather than a week. Fix direction: parse a reset timestamp out of the message
-text when the structured field is absent, and halt the task with an explicit
-"quota exhausted until <date>" error when the wait exceeds `LIMIT_MAX_SLEEP_MS`.
+`parseResetTime` in `scripts/agent-stats.mjs` now reads the reset out of the
+message text when the structured field is absent ("try again at 5:04 PM",
+"try again at Aug 16th", "resets 6:30am (Asia/Calcutta)"). A reset inside the
+12h `LIMIT_TOTAL_MAX_MS` budget times the retry to it; one past it leaves the
+builder `infra_failed` (the merger `integration_failed`) at once with "quota
+exhausted until <date>". Held by
+`scripts/quota-reset.test.mjs`.
 
 ### 5. The merger agent has no prompt-size guard — FIXED
 
