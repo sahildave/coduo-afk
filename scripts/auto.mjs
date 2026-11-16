@@ -4464,14 +4464,10 @@ export const runAuto = async ({
       // A halted run still integrates and drains what is already building — the
       // work is done and paid for. It just starts nothing new.
       if (!halted) {
-        const batch = planBuilderBatch(
-          dag,
-          config,
-          withProbeReservations(state),
-          Date.now(),
-          explicitTaskId,
-          admission.machineSlots(Object.keys(state.activeWorkers ?? {}).length),
-        );
+        const planned = withProbeReservations(state);
+        // A task the operator named skips the machine cap: they are present.
+        const machineSlots = explicitTaskId ? Infinity : admission.machineSlots(Object.keys(planned.activeWorkers ?? {}).length);
+        const batch = planBuilderBatch(dag, config, planned, Date.now(), explicitTaskId, machineSlots);
         // After the builders start, so the log reads in the order it happened:
         // the lane a task lost to is named as running by the line above it.
         // Said once per deferral, not once per tick — the loop spins

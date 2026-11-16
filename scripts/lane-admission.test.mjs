@@ -54,9 +54,12 @@ test("memory pressure warn closes admission", () => {
   assert.match(lines[0], /lane admission closed: memory pressure warn \(1 epics, 0 machine lanes\)\. Waiting\./);
 });
 
-test("high load alone does not close admission", () => {
-  const { admission } = make(scratch(), { pressure: () => 1, load: () => 40 });
-  assert.equal(admission.machineSlots(0), 8);
+test("the cap says once that it is holding lanes back", () => {
+  const { admission, lines } = make(scratch());
+  assert.equal(admission.machineSlots(8), 0);
+  assert.equal(admission.machineSlots(8), 0);
+  assert.deepEqual(lines, ["AUTO: lane admission at the machine cap: 8 of 8 lanes across 1 epics. Waiting."]);
+  assert.equal(admission.machineSlots(7), 1);
 });
 
 test("reopens after 3 clean readings, not 2", () => {

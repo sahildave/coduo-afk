@@ -104,6 +104,7 @@ export const createLaneAdmission = ({
   let clean = 0;
   let others = { lanes: 0, epics: 0 };
   let last = -Infinity;
+  let atCap = false;
   const refresh = (own) => {
     if (now() - last < refreshMs) return;
     last = now();
@@ -125,7 +126,11 @@ export const createLaneAdmission = ({
     enabled: true,
     machineSlots: (own = 0) => {
       refresh(own);
-      return closed ? 0 : Math.max(0, cap - others.lanes - own);
+      if (closed) return 0;
+      const free = Math.max(0, cap - others.lanes - own);
+      if (!free && !atCap) say(`AUTO: lane admission at the machine cap: ${others.lanes + own} of ${cap} lanes across ${others.epics + 1} epics. Waiting.`);
+      atCap = !free;
+      return free;
     },
   };
 };

@@ -292,7 +292,9 @@ export const clearTaskRuntime = (state, id) => {
   // measured against this map — so a reset that leaves it consumes a slot with a
   // ghost. Two orphaned lanes with null pids filled both slots of a
   // `max_parallel: 2` epic: `afk status` showed six pending tasks, the restart
-  // admitted nobody, and the only escape was deleting the state file.
+  // admitted nobody, and the only escape was deleting the state file. Its
+  // machine lane file goes with it, or other runners count the ghost too.
+  releaseLane(state.activeWorkers?.[id]?.laneFile);
   delete state.activeWorkers?.[id];
   // (#215) A lane red held for a retry belongs to the attempts just cleared.
   delete state.tasks[id].laneDefect;

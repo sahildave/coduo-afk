@@ -2,6 +2,15 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **Lanes are capped across every epic on the machine (2026-11-16).**
+  `maxParallel` capped lanes per epic only, so three epics at 3 started 9.
+  Each live builder lane now writes a file in `~/.afk-claude/lanes/`, and a
+  runner starts no lane past `maxLanesMachine` (default 8) counted over every
+  runner, nor while macOS memory pressure is warn or critical. It reopens after
+  3 clean readings. New config key `maxLanesMachine: <n> | false`; the
+  `AFK_MAX_LANES_MACHINE` variable wins (`off` turns it off). A task named with
+  `--task` skips the cap.
+
 - **`afk close --redo` re-reviews with the tip gate, and an unrun gate says so (2026-11-15).**
   The review-only redo after a fix pass ran the verifier with no gate record,
   and the prompt no longer tells it to run the checks, so it reviewed with no
