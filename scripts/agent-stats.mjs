@@ -117,6 +117,65 @@ const limitText = (event) => [
 
 const LIMIT_RE = /(session[ _]limit|usage[ _]limit|rate[ _]limit|quota exceeded|too many requests|resets? (at )?\d)/i;
 
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
+const zoneOffsetMs = (zone, ms) => {
+  const p = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: zone, hourCycle: 'h23', year: 'numeric', month: 'numeric',
+      day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric',
+    }).formatToParts(ms).map((x) => [x.type, Number(x.value)]),
+  );
+  return Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second) - Math.floor(ms / 1000) * 1000;
+};
+
+const wallToEpochMs = (y, mo, d, h, mi, zone) => {
+  if (!zone) return new Date(y, mo, d, h, mi).getTime();
+  const guess = Date.UTC(y, mo, d, h, mi);
+  return guess - zoneOffsetMs(zone, guess);
+};
+
+// Reset moment (epoch seconds) named in a limit message, or null. Shapes seen:
+// "try again at 5:04 PM.", "try again at Oct 2nd, 2026 12:47 AM.",
+// "try again at Aug 16th", "resets 3pm (Asia/Kolkata)", "resets at 5:30am".
+export const parseResetTime = (text, now = Date.now()) => {
+  const m = /(?:try again at|resets?(?: at)?)\s+(?:(?:([A-Za-z]{3})[a-z]*\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,?\s*(\d{4}))?)\s*)?(?:(\d{1,2})(?::(\d{2}))?\s*([ap]m)?)?(?:\s*\(([A-Za-z_]+\/[A-Za-z_]+|UTC)\))?/i.exec(text ?? '');
+  if (!m) return null;
+  const [, mon, day, year, hr, min, ap, zone] = m;
+  if (!mon && !hr) return null;
+  if (!mon && !ap && !min) return null;
+  let h = 0;
+  if (hr !== undefined) {
+    h = Number(hr) % 12 + (ap?.toLowerCase() === 'pm' ? 12 : 0);
+    if (!ap) h = Number(hr);
+  }
+  const mi = Number(min ?? 0);
+  if (h > 23 || mi > 59) return null;
+  try {
+    const at = (y, mo, d) => wallToEpochMs(y, mo, d, h, mi, zone);
+    const nowDate = new Date(now);
+    let ms;
+    if (mon) {
+      const mo = MONTHS.indexOf(mon.toLowerCase());
+      if (mo < 0) return null;
+      ms = at(year ? Number(year) : nowDate.getFullYear(), mo, Number(day));
+      if (!year && ms < now) ms = at(nowDate.getFullYear() + 1, mo, Number(day));
+    } else {
+      ms = at(nowDate.getFullYear(), nowDate.getMonth(), nowDate.getDate());
+      if (ms < now) ms += 24 * 3600_000;
+    }
+    return Number.isFinite(ms) ? Math.floor(ms / 1000) : null;
+  } catch {
+    return null;
+  }
+};
+
+// Epoch seconds of a reset that lies beyond the wait budget left, else null.
+export const quotaExhaustedUntil = (rateLimit, waitedMs, budgetMs, now = Date.now()) => {
+  if (typeof rateLimit?.resetsAt !== 'number') return null;
+  return rateLimit.resetsAt * 1000 - now > budgetMs - waitedMs ? rateLimit.resetsAt : null;
+};
+
 const recordFailure = (stats, event) => {
   const status = event.api_error_status
     ?? event.apiErrorStatus
@@ -134,6 +193,10 @@ const recordFailure = (stats, event) => {
     ?? event.rateLimit
     ?? event.error?.rate_limit_info);
   if (info) stats.rateLimit = info;
+  if (stats.rateLimit && typeof stats.rateLimit.resetsAt !== 'number') {
+    const resetsAt = parseResetTime(text);
+    if (resetsAt !== null) stats.rateLimit = { ...stats.rateLimit, resetsAt };
+  }
 };
 
 export const parseStream = (text) => {
