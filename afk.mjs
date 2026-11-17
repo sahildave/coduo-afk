@@ -33,6 +33,7 @@ export const commands = {
   measure: ["measure.mjs"],
   stats: ["agent-stats.mjs"],
   usage: ["usage.mjs"],
+  "orchestrator-lag": ["orchestrator-lag.mjs"],
   stack: ["stack.mjs"],
   dashboard: ["dashboard-server.mjs"],
   ledger: ["ledger.mjs"],
@@ -85,6 +86,7 @@ export const COMMAND_FLAGS = {
   measure: ["project", "days", "json"],
   stats: ["efficiency", "json"],
   usage: ["month", "json"],
+  "orchestrator-lag": ["project", "epic", "json"],
   stack: ["json", "write", "dry-run"],
   dashboard: [],
   ledger: ["type", "source", "text", "applies-to", "json", "full"],
@@ -512,6 +514,13 @@ export const HELP_SECTIONS = {
                                against AFK_USAGE_BUDGET_USD (default 200)
                                  --month  month to date (UTC) only
                                  --json   the full report as JSON`,
+  "orchestrator-lag": `  orchestrator-lag --project=<repo-path> [--epic=<id>] [--json]
+                               How long after a lane finishes, fails or gets
+                               stuck its Orchestrator names it to the owner,
+                               from the runner log and the Orchestrator's
+                               Claude Code transcripts; missed when over 15
+                               min or never. No --epic: every archived run
+                                 --json   the rows as JSON`,
   dashboard: `  dashboard                    Serve the live dashboard (PORT defaults to a port
                                derived from this checkout's path). /lanes.html
                                shows context and tool calls per lane;
