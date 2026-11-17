@@ -233,6 +233,8 @@ export const buildLaunchRow = ({ project, dag, config = {}, baseSha = null, at =
     dagDepth: tasks.length ? Math.max(...depths.values()) + 1 : 0,
     rootWidth: tasks.filter((task) => !(task.dependsOn ?? []).length).length,
     laneCap: Math.max(1, Number(config?.maxParallel) || 1),
+    // The lane runtime after `--runtime=` overrides `agent.runtime` (auto.mjs withRuntime).
+    runtime: config?.agent?.runtime ?? null,
     // What this launch released, if anything: the `--task=` of a `gate:
     // before`, the `--accept=` of `gate: after`. The close row reads these to
     // say what the stop before this launch was waiting on.
@@ -544,6 +546,7 @@ export const buildCloseRow = async ({ afkDir, project, epicId = null, launchRows
     outcome: close?.outcome ?? null,
     launches: launches ? launches.length : null,
     relaunches: launches ? Math.max(0, launches.length - 1) : null,
+    runtime: launches?.at(-1)?.runtime ?? null,
     gateReleases: launches ? launches.filter((row) => row.release?.task).length : null,
     acceptances: close ? Object.keys(close.acceptances ?? {}).length + (close.voidedAcceptances?.length ?? 0) : null,
     stops: stopsOf(launches, events, close),

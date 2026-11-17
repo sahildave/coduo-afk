@@ -72,7 +72,8 @@ worktreeSetup:
 maxParallel: 5
 agent:
   timeoutMs: 900000
-  runtime: herdr
+  # Lanes run direct by default. herdr is opt-in, for attended runs.
+  # runtime: herdr
 ```
 
 YAML rather than JSON for one reason: the file ships with every optional key
