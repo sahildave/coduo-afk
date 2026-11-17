@@ -706,13 +706,35 @@ export const transcriptShowsAuthDeath = (slice) =>
     catch { return false; }
   });
 
+// A usage limit in a lane's transcript is, like auth death, only a line Claude
+// Code wrote for a failed API call (`error: "rate_limit"`); a herdr lane has no
+// stream.jsonl, so this is where its quota and reset time show. The text ("weekly
+// limit · resets Aug 30 at 1am") is not matched: quoted text must not trip it,
+// and parseResetTime mis-reads that form. Claude Code never resumes after one.
+export const transcriptLimit = (slice) => {
+  for (const line of String(slice ?? '').split('\n')) {
+    if (!line) continue;
+    let o;
+    try { o = JSON.parse(line); } catch { continue; }
+    if (o?.isApiErrorMessage !== true || o.error !== 'rate_limit') continue;
+    const q = o.quotaLimits ?? o.apiErrorParams?.rate_limit_info ?? {};
+    return {
+      status: 'rejected',
+      rateLimitType: q.rateLimitType ?? 'rate limit',
+      ...(typeof q.resetsAt === 'number' ? { resetsAt: q.resetsAt } : {}),
+    };
+  }
+  return null;
+};
+
 export const makeTranscriptWatcher = (cwd, since, marker) => {
   let file = null;
   let offset = 0;
   let usageSeen = false;
   const tokens = { input: 0, output: 0, cacheRead: 0 };
-  return {
+  const watcher = {
     tokens,
+    limit: null,
     hasUsage: () => usageSeen,
     // Returns true when the new transcript slice contains an auth failure.
     scan() {
@@ -738,9 +760,11 @@ export const makeTranscriptWatcher = (cwd, since, marker) => {
           }
         } catch {}
       }
+      watcher.limit ??= transcriptLimit(fresh);
       return transcriptShowsAuthDeath(fresh);
     },
   };
+  return watcher;
 };
 
 const agentLabel = (key, attempt) =>
@@ -1061,6 +1085,10 @@ const runHerdrAgent = async ({ role, key, taskId, cwd, paneId, workspaceId, agen
         say(`HERDR: lane ${key} hit an auth failure — the claude login has expired. Run: claude auth login`);
         notify('The claude login expired mid-run. Re-login to continue.', { workspaceId: workspace, taskId, subtitle: 'login expired', kind: 'auth_expired' });
         return finishStopped({ status: 1, timedOut: false, authFailure: true });
+      }
+      if (watcher.limit) {
+        say(`HERDR: lane ${key} hit a Claude usage limit (${watcher.limit.rateLimitType}).`);
+        return finishStopped({ status: 1, timedOut: false, rateLimited: true, rateLimit: watcher.limit });
       }
     }
 

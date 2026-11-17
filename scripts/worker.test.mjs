@@ -483,6 +483,26 @@ test("an unproven Herdr stop leaves the lane untouched for recovery", async () =
   }
 });
 
+test("a Herdr lane's transcript limit reaches the outcome with its reset time", async () => {
+  // A herdr lane writes no stream.jsonl, so the reset time only exists on the
+  // agent result; without the fallback auto.mjs sees rateLimit: null.
+  const { repo, base, lane, restore } = codexLane();
+  try {
+    const rateLimit = { status: "rejected", rateLimitType: "seven_day", resetsAt: 1788022800 };
+    const built = await runBuilder({
+      root: repo,
+      config: { ...CODEX_CONFIG, agent: { ...CODEX_CONFIG.agent, runtime: "herdr" } },
+      task: CODEX_TASK, worktree: lane.worktree, branch: lane.branch, baseSha: base, attempt: 1,
+      runHerdr: async () => ({ status: 1, timedOut: false, rateLimited: true, rateLimit }),
+    });
+    assert.equal(built.outcome, "rate_limited");
+    assert.deepEqual(built.rateLimit, rateLimit);
+    assert.equal(built.quotaRejected, undefined);
+  } finally {
+    restore();
+  }
+});
+
 test("a Codex builder that writes outside its lane is stopped, not committed", async () => {
   // The same guard the Claude path has, reached through the Codex event shape.
   // Without the `file_change` branch in `foreignWrites` this lane passes: the

@@ -188,7 +188,8 @@ export const runIntegration = async ({ root, config, epic = null, say = console.
   const stats = parseStream(raw);
   const rateLimited = stats.apiErrorStatus === 429
     || stats.rateLimit?.status === 'rejected'
-    || (raw.length <= 600 && LIMIT_RE.test(raw));
+    || (raw.length <= 600 && LIMIT_RE.test(raw))
+    || agentResult.rateLimited === true;
 
   const inspectHead = () => {
     const conflicts = run('git diff --name-only --diff-filter=U', { cwd: root }).stdout.trim().split('\n').filter(Boolean);
@@ -340,7 +341,7 @@ export const runIntegration = async ({ root, config, epic = null, say = console.
     atomicWrite(resolve(runDir, 'verification.json'), `${JSON.stringify(verification, null, 2)}\n`);
     return {
       outcome: rateLimited ? 'rate_limited' : 'integration_failed',
-      verification, integrationBase, rateLimit: stats.rateLimit, failureReason, removed,
+      verification, integrationBase, rateLimit: stats.rateLimit ?? agentResult.rateLimit, failureReason, removed,
       // The failed check already had its second run; a retry would only
       // re-merge into the same tree. A failure after a re-run that PASSED
       // (dirt the checks left) is not a check failure and keeps the retry.

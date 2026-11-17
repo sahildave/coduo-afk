@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { makeTranscriptWatcher, transcriptShowsAuthDeath } from './runtime-herdr.mjs';
+import { makeTranscriptWatcher, transcriptLimit, transcriptShowsAuthDeath } from './runtime-herdr.mjs';
 
 const jsonl = (...entries) => entries.map((e) => JSON.stringify(e)).join('\n') + '\n';
 
@@ -91,4 +91,53 @@ test('a non-auth API error, partial lines and empty input are not auth death', (
   assert.equal(transcriptShowsAuthDeath(JSON.stringify(realAuthError).slice(0, 40)), false);
   assert.equal(transcriptShowsAuthDeath(''), false);
   assert.equal(transcriptShowsAuthDeath(undefined), false);
+});
+
+// Shape copied from a real transcript on disk (Claude Code 2.1.234+): a herdr
+// lane writes no stream.jsonl, so this line is the only place its quota shows.
+const realLimitLine = {
+  type: 'assistant',
+  isApiErrorMessage: true,
+  error: 'rate_limit',
+  apiErrorStatus: 429,
+  quotaLimits: { status: 'rejected', resetsAt: 1788022800, rateLimitType: 'seven_day' },
+  message: {
+    model: '<synthetic>',
+    role: 'assistant',
+    content: [{ type: 'text', text: "You've hit your weekly limit · resets Aug 30 at 1am (Asia/Kuala_Lumpur)" }],
+  },
+};
+
+test('a real usage-limit line is a limit, with resetsAt from quotaLimits', () => {
+  assert.deepEqual(transcriptLimit(jsonl(realLimitLine)), { status: 'rejected', rateLimitType: 'seven_day', resetsAt: 1788022800 });
+});
+
+test('a tool_result or assistant message quoting the limit text is not a limit', () => {
+  const quoted = "You've hit your weekly limit · resets Aug 30 at 1am (Asia/Kuala_Lumpur)";
+  const toolResult = { type: 'user', message: { role: 'user', content: [{ type: 'tool_result', tool_use_id: 'toolu_y', content: quoted }] } };
+  const prose = { type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: `The transcript says: ${quoted}` }] } };
+  assert.equal(transcriptLimit(jsonl(toolResult, prose)), null);
+});
+
+test('the watcher sets .limit from a real limit line while scan() stays false for auth', () => {
+  const home = mkdtempSync(join(tmpdir(), 'afk-transcript-home-'));
+  const saved = process.env.HOME;
+  process.env.HOME = home;
+  try {
+    const cwd = '/tmp/lane-wt-limit';
+    const dir = join(home, '.claude', 'projects', cwd.replace(/[^A-Za-z0-9]/g, '-'));
+    mkdirSync(dir, { recursive: true });
+    const file = join(dir, 'session.jsonl');
+    const marker = '/tmp/prompt-limit.md';
+    writeFileSync(file, jsonl({ type: 'user', message: { content: marker } }));
+    const watcher = makeTranscriptWatcher(cwd, 0, marker);
+    assert.equal(watcher.scan(), false);
+    assert.equal(watcher.limit, null);
+    appendFileSync(file, jsonl(realLimitLine));
+    assert.equal(watcher.scan(), false, 'a usage limit is not an expired login');
+    assert.equal(watcher.limit?.resetsAt, 1788022800);
+  } finally {
+    process.env.HOME = saved;
+    rmSync(home, { recursive: true, force: true });
+  }
 });
