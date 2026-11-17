@@ -483,16 +483,19 @@ test("an unproven Herdr stop leaves the lane untouched for recovery", async () =
   }
 });
 
-test("a Herdr lane's transcript limit reaches the outcome with its reset time", async () => {
+test("a Claude Herdr lane's transcript limit reaches the outcome with its reset time", async () => {
   // A herdr lane writes no stream.jsonl, so the reset time only exists on the
-  // agent result; without the fallback auto.mjs sees rateLimit: null.
+  // agent result; without the fallback auto.mjs sees rateLimit: null. The
+  // transcript watcher is Claude-only, so the lane runs on Claude.
   const { repo, base, lane, restore } = codexLane();
   try {
+    process.env.AFK_BACKEND = "claude";
     const rateLimit = { status: "rejected", rateLimitType: "seven_day", resetsAt: 1788022800 };
     const built = await runBuilder({
       root: repo,
       config: { ...CODEX_CONFIG, agent: { ...CODEX_CONFIG.agent, runtime: "herdr" } },
       task: CODEX_TASK, worktree: lane.worktree, branch: lane.branch, baseSha: base, attempt: 1,
+      backend: "claude",
       runHerdr: async () => ({ status: 1, timedOut: false, rateLimited: true, rateLimit }),
     });
     assert.equal(built.outcome, "rate_limited");
