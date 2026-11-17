@@ -514,6 +514,18 @@ const usageFields = async ({ project, epicId }) => {
   return [...out.values()];
 };
 
+// The Orchestrator's transcript lives under the main checkout's project folder,
+// even for an epic-worktree run. Null without one, or on any error.
+const orchestratorLagFields = async (afkDir, epicId) => {
+  try {
+    const { mainCheckout } = await import("./runtime-herdr.mjs");
+    const { epicLag } = await import("./orchestrator-lag.mjs");
+    return epicLag({ log: resolve(afkDir, "agent-auto.log"), repo: mainCheckout(afkDir), epic: epicId });
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Build the close row from a run's `.afk/` folder (or its archive) and the
  * launch rows already in the measure file. No agent, no network.
@@ -583,6 +595,7 @@ export const buildCloseRow = async ({ afkDir, project, epicId = null, launchRows
     },
     lanes: await laneFields(lanes, { project, epicId: id }),
     usage: await usageFields({ project, epicId: id }),
+    orchestratorLag: await orchestratorLagFields(afkDir, id),
   };
 };
 

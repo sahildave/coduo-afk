@@ -15,6 +15,7 @@ import { join, resolve } from "node:path";
 import { isMainModule, parseArgv } from "./lib.mjs";
 import { measurePath, measureProject } from "./measure.mjs";
 import { headOf, transcriptsRoot } from "./usage.mjs";
+import { epicWorktree } from "./worktree.mjs";
 
 export const MISSED_AFTER_MIN = 15;
 
@@ -34,13 +35,18 @@ export const LANE_EVENTS = [
 ];
 
 const LOG_LINE = /^\[(\d{4}-\d\d-\d\dT[^\]]+)\] (AUTO: .*)$/;
+// A timeout or a silent exit followed by a retry is not an event: the lane is still working.
+const RETRY = /^AUTO: builder (\S+) (?:failed; retrying|attempt \d+ started)/;
+const RETRIED = new Set(["timed-out", "died"]);
 
 /** `{ task, kind, at }` for every lane event in a runner log, in log order. */
 export const laneEvents = (text) => {
-  const out = [];
+  let out = [];
   for (const raw of String(text).split("\n")) {
     const line = LOG_LINE.exec(raw);
     if (!line) continue;
+    const retry = RETRY.exec(line[2]);
+    if (retry) { out = out.filter((e) => !(e.task === retry[1] && RETRIED.has(e.kind))); continue; }
     for (const [kind, re] of LANE_EVENTS) {
       const hit = re.exec(line[2]);
       if (hit) { out.push({ task: hit[1], kind, at: line[1] }); break; }
@@ -115,8 +121,8 @@ const median = (xs) => {
   return s.length % 2 ? s[mid] : Math.round(((s[mid - 1] + s[mid]) / 2) * 10) / 10;
 };
 
-/** The runs of a repo: each archived run's log, plus the live one. */
-export const runsOf = (repo) => {
+/** The runs of a repo: each archived run's log, the live one, and each named epic's worktree run. */
+export const runsOf = (repo, epics = []) => {
   const afk = join(resolve(repo), ".afk");
   const runs = [];
   let names = [];
@@ -130,6 +136,10 @@ export const runsOf = (repo) => {
     let epic = null;
     try { epic = String(JSON.parse(readFileSync(join(afk, "state.json"), "utf8")).epic?.id ?? "") || null; } catch {}
     runs.push({ run: "live", epic, log: live });
+  }
+  for (const epic of epics) {
+    const log = join(epicWorktree(repo, epic), ".afk", "agent-auto.log");
+    if (existsSync(log)) runs.push({ run: "worktree", epic: String(epic), log });
   }
   return runs;
 };
@@ -147,25 +157,36 @@ const launchRuntime = (project, epic) => {
   return runtime;
 };
 
+const summarize = (events, files) => {
+  const texts = files.flatMap(assistantTexts).sort((a, b) => a.at.localeCompare(b.at));
+  const rows = lagRows(events, texts);
+  return {
+    rows,
+    events: rows.length,
+    mentioned: rows.filter((x) => !x.missed).length,
+    missed: rows.filter((x) => x.missed).length,
+    medianLagMin: median(rows.filter((x) => x.lagMin != null).map((x) => x.lagMin)),
+  };
+};
+
+/** One run's lag for the close row: `{ events, mentioned, missed, medianLagMin }`, or null with no log or no Orchestrator transcript. */
+export const epicLag = ({ log, repo, epic, root = transcriptsRoot() }) => {
+  const files = epic ? orchestratorTranscripts(repo, root).get(String(epic)) ?? [] : [];
+  if (!files.length || !existsSync(log)) return null;
+  const { rows, ...summary } = summarize(laneEvents(readFileSync(log, "utf8")), files);
+  return summary;
+};
+
 /** The report: per run, its events with lag, and a summary. */
 export const lagReport = ({ repo, epic = null, root = transcriptsRoot(), project = measureProject(resolve(repo)) }) => {
   const transcripts = orchestratorTranscripts(repo, root);
-  const runs = runsOf(repo).filter((r) => (epic ? r.epic === String(epic) : true));
+  const runs = runsOf(repo, new Set([...transcripts.keys(), ...(epic ? [String(epic)] : [])])).filter((r) => (epic ? r.epic === String(epic) : true));
   return runs.map((r) => {
     const events = laneEvents(readFileSync(r.log, "utf8"));
     const files = r.epic ? transcripts.get(r.epic) ?? [] : [];
     const base = { run: r.run, epic: r.epic, runtime: r.epic ? launchRuntime(project, r.epic) : null, transcripts: files };
     if (!files.length) return { ...base, rows: null, events: events.length, mentioned: null, missed: null, medianLagMin: null };
-    const texts = files.flatMap(assistantTexts).sort((a, b) => a.at.localeCompare(b.at));
-    const rows = lagRows(events, texts);
-    return {
-      ...base,
-      rows,
-      events: rows.length,
-      mentioned: rows.filter((x) => !x.missed).length,
-      missed: rows.filter((x) => x.missed).length,
-      medianLagMin: median(rows.filter((x) => x.lagMin != null).map((x) => x.lagMin)),
-    };
+    return { ...base, ...summarize(events, files) };
   });
 };
 

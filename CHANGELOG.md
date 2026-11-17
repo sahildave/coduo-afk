@@ -6,9 +6,14 @@
   For each lane that committed, merged, failed, hit a quota, got blocked, timed
   out, died or reached a `gate: after`, it finds the first Orchestrator message
   that names the task and prints the lag; over 15 min or never is `missed`. It
-  reads the runner log and the Orchestrator's Claude Code transcripts, and
-  shows the launch row's `runtime` when the row has one. New command, flags
-  `--project=<repo-path>`, `--epic=<id>`, `--json`. No config change.
+  reads the runner log (the main checkout's, or the epic worktree's for an
+  `afk epic --worktree` run) and the Orchestrator's Claude Code transcripts, and
+  shows the launch row's `runtime` when the row has one. A timeout or silent
+  exit the runner retries is not counted. The epic's close row in
+  `docs/measure/` now carries `orchestratorLag` (`events`, `mentioned`,
+  `missed`, `medianLagMin`; null with no Orchestrator transcript), so the lag
+  outlives the epic worktree. New command, flags `--project=<repo-path>`,
+  `--epic=<id>`, `--json`. No config change.
 
 - **Lanes are capped across every epic on the machine (2026-11-16).**
   `maxParallel` capped lanes per epic only, so three epics at 3 started 9.

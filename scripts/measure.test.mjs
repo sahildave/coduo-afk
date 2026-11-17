@@ -79,6 +79,25 @@ const writeState = (afk, fields = {}) => {
 
 const rows = () => readFileSync(measurePath(PROJECT), "utf8").trim().split("\n").map((line) => JSON.parse(line));
 
+test("the close row carries the Orchestrator's lag for the epic, or null with no Orchestrator transcript", async (t) => {
+  const { base, root, afk } = fixture(t);
+  writeState(afk);
+  writeFileSync(join(afk, "agent-auto.log"), [
+    "[2026-11-12T13:20:00.000Z] AUTO: builder 635 passed worktree checks and committed ba4bc203; queued for integration.",
+    "[2026-11-12T14:00:00.000Z] AUTO: integration 636 failed after 1 retry; branch/worktree retained.",
+  ].join("\n"));
+  assert.equal((await appendCloseRow({ root, mark: false, say: quiet })).orchestratorLag, null);
+  const folder = join(base, "transcripts", root.replace(/[^A-Za-z0-9]/g, "-"));
+  mkdirSync(folder, { recursive: true });
+  const say = (at, text) => JSON.stringify({ type: "assistant", timestamp: at, message: { role: "assistant", content: [{ type: "text", text }] } });
+  writeFileSync(join(folder, "orch.jsonl"), [
+    JSON.stringify({ type: "user", timestamp: "2026-11-12T12:45:00.000Z", message: { role: "user", content: "/coduo-afk start #9\nYou are the Orchestrator for this epic." } }),
+    say("2026-11-12T13:24:00.000Z", "#635 committed."),
+  ].join("\n"));
+  const close = await appendCloseRow({ root, mark: false, say: quiet });
+  assert.deepEqual(close.orchestratorLag, { events: 2, mentioned: 1, missed: 1, medianLagMin: 4 });
+});
+
 const baseline = (root, commands) => recordGate(
   { root, kind: "baseline", commands, say: quiet },
   () => runBaselineChecks({ commands, cwd: root, say: quiet }),

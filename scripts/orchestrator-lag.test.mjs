@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { formatReport, lagReport, laneEvents, mentions } from "./orchestrator-lag.mjs";
+import { epicWorktree } from "./worktree.mjs";
 
 const LOG = [
   "[2026-11-12T13:00:00.000Z] AUTO: builder 635 attempt 1 started.",
@@ -86,4 +87,33 @@ test("no Orchestrator transcript: says so and measures nothing", (t) => {
   assert.equal(run.rows, null);
   assert.equal(run.missed, null);
   assert.match(formatReport([run]), /6 events; no Orchestrator transcript found for #683; lag not measured/);
+});
+
+test("a timeout or a silent exit the runner retries is not an event; the final failure is", () => {
+  const log = [
+    "[2026-11-12T13:00:00.000Z] AUTO: builder 641 hit the 3600000ms agent deadline at 3600100ms having produced 2 files and 1000 tokens.",
+    "[2026-11-12T13:00:01.000Z] AUTO: builder 641 failed; retrying with a fresh agent process.",
+    "[2026-11-12T13:01:00.000Z] AUTO: builder 642 exited 1 after 900ms having spent no tokens — it never reached the API.",
+    "[2026-11-12T13:02:00.000Z] AUTO: builder 642 attempt 2 started at abcdef12 in /tmp/x.",
+    "[2026-11-12T14:00:00.000Z] AUTO: builder 641 hit the 3600000ms agent deadline at 3600100ms having produced 0 files.",
+    "[2026-11-12T14:00:01.000Z] AUTO: builder 641 failed after 1 retry.",
+  ].join("\n");
+  assert.deepEqual(laneEvents(log).map((e) => [e.task, e.kind, e.at.slice(11, 16)]), [
+    ["641", "timed-out", "14:00"], ["641", "failed", "14:00"],
+  ]);
+});
+
+test("--project=<main checkout> measures an epic-worktree run", (t) => {
+  const { repo, root } = fixture(t);
+  const before = process.env.AFK_EPIC_ROOT;
+  process.env.AFK_EPIC_ROOT = join(repo, "..", "epics");
+  t.after(() => { if (before === undefined) delete process.env.AFK_EPIC_ROOT; else process.env.AFK_EPIC_ROOT = before; });
+  rmSync(join(repo, ".afk"), { recursive: true });
+  const afk = join(epicWorktree(repo, "683"), ".afk");
+  mkdirSync(afk, { recursive: true });
+  writeFileSync(join(afk, "agent-auto.log"), LOG);
+  const [run] = lagReport({ repo, root, project: null });
+  assert.equal(run.run, "worktree");
+  assert.equal(run.epic, "683");
+  assert.deepEqual([run.events, run.mentioned, run.missed], [6, 2, 4]);
 });
