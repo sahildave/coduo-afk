@@ -1010,7 +1010,7 @@ export const runBuilder = async ({ root, config, task, worktree, branch, baseSha
   // this lane while the file it wrote elsewhere stayed exactly where it is —
   // the evidence destroyed and the escape kept.
   if (escaped.length) return { outcome: 'failed', verification };
-  if (rateLimited) return { outcome: 'rate_limited', verification, rateLimit: stats.rateLimit, ...(quotaRejected ? { quotaRejected } : {}) };
+  if (rateLimited) return { outcome: 'rate_limited', verification, rateLimit: stats.rateLimit ?? agentResult.rateLimit, ...(quotaRejected ? { quotaRejected } : {}) };
   if (blocked) return { outcome: 'blocked', verification };
   if (!ok) return { outcome: 'failed', verification };
 
