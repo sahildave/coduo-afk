@@ -2,6 +2,14 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **`afk orchestrator-lag` measures how long the Orchestrator stays quiet (2026-11-17).**
+  For each lane that committed, merged, failed, hit a quota, got blocked, timed
+  out, died or reached a `gate: after`, it finds the first Orchestrator message
+  that names the task and prints the lag; over 15 min or never is `missed`. It
+  reads the runner log and the Orchestrator's Claude Code transcripts, and
+  shows the launch row's `runtime` when the row has one. New command, flags
+  `--project=<repo-path>`, `--epic=<id>`, `--json`. No config change.
+
 - **Lanes are capped across every epic on the machine (2026-11-16).**
   `maxParallel` capped lanes per epic only, so three epics at 3 started 9.
   Each live builder lane now writes a file in `~/.afk-claude/lanes/`, and a
