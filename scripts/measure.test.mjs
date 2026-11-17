@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 import {
   appendCloseRow, appendLaunchRow, buildLaunchRow, buildMergeRow, builderMeasures, gateEventsPath, measurePath, recordGate,
 } from "./measure.mjs";
-import { runBaselineChecks } from "./auto.mjs";
+import { runBaselineChecks, withRuntime } from "./auto.mjs";
 
 const AFK = resolve(dirname(fileURLToPath(import.meta.url)), "..", "afk.mjs");
 const PROJECT = "fixture";
@@ -142,6 +142,21 @@ test("a launch row carries the stop forecast, with the same stops as its humanGa
   const relaunch = appendLaunchRow({ root, dag: DAG, config: {}, forecast: answered, say: quiet });
   assert.deepEqual(relaunch.forecast, answered);
   assert.deepEqual(rows().map((row) => row.forecast), [launch.forecast, answered]);
+});
+
+test("the launch row records the lane runtime after the flag, and the close row the last launch's", async (t) => {
+  const { root, afk } = fixture(t);
+  writeState(afk);
+  const herdrConfig = { agent: { runtime: "herdr" } };
+  assert.equal(buildLaunchRow({ project: PROJECT, dag: DAG, config: withRuntime({}, null) }).runtime, "direct");
+  assert.equal(buildLaunchRow({ project: PROJECT, dag: DAG, config: withRuntime(herdrConfig, null) }).runtime, "herdr");
+  assert.equal(buildLaunchRow({ project: PROJECT, dag: DAG, config: {} }).runtime, null);
+  appendLaunchRow({ root, dag: DAG, config: withRuntime({}, "herdr"), say: quiet });
+  await sleep(5);
+  appendLaunchRow({ root, dag: DAG, config: withRuntime(herdrConfig, "direct"), say: quiet });
+  assert.deepEqual(rows().map((row) => row.runtime), ["herdr", "direct"]);
+  const close = await appendCloseRow({ root, say: quiet });
+  assert.equal(close.runtime, "direct");
 });
 
 test("a red baseline then a green one on the same tree is one false red", async (t) => {

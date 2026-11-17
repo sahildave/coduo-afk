@@ -83,7 +83,8 @@ oneWayDoors:
 
 agent:
   timeoutMs: 5400000
-  runtime: herdr
+  # Lanes run direct by default. herdr is opt-in, for attended runs.
+  # runtime: herdr
   # model: claude-opus-5-5
   # reasoningEffort: medium
   # Retries AFTER the first builder attempt; 1 is the default and the behaviour
