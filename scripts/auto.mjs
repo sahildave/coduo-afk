@@ -484,7 +484,7 @@ const LIMIT_FALLBACK_MS = 5 * 60_000;
 const LIMIT_MAX_SLEEP_MS = 20 * 60_000;
 const LIMIT_TOTAL_MAX_MS = 12 * 60 * 60_000;
 const quotaResetLabel = (epochSec) =>
-  new Date(epochSec * 1000).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZoneName: "short" });
+  new Date(epochSec * 1000).toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
 
 function compactVerification(verification) {
   return {
