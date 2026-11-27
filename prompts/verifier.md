@@ -40,12 +40,12 @@ File what you find as `findings` with `axis: "reach"`, alongside the two lists.
 {{gateBlock}}
 {{/gateBlock}}
 
-Step 1d — Journeys, only if the repo has a verify skill: a `.claude/skills/verify-*/` folder with a `features/` directory. If none exists, skip this step and say so in `summary`.
+Step 1d — Journeys, only if the repo has a feature map: `docs/feature-map.md`, or one per package at `<dir>/docs/feature-map.md`. If none exists, skip this step and say so in `summary`.
 
-- Pick the journey IDs (such as `FAQ-01`) whose feature file's `Covers:` line names a file this diff touches. Run those journeys with the skill's own run command.
-- Teeth test, in this disposable checkout: break one line of the covered code so the journey's promise is false, run that journey again, confirm it fails on an assertion, then revert the line. A journey that stays green while the code is broken is a `major` finding with `axis: "spec"`.
-- Put one line in `summary` that starts `Journeys:` and lists the IDs run, their result, and the teeth test, e.g. `Journeys: FAQ-01–03 passed; teeth: broke writer.ts → FAQ-01 red → reverted → green.` The summary is printed in the PR body, so this line is the PR's verification record.
-- A journey that could not run (servers would not start, port taken) goes in `skipped` with the reason.
+- Read the map's header for what a proof is and how it is checked. Pick the journey IDs (such as `ACT-01`) whose proofs test code this diff touches, and every row the diff adds or edits. Their result is the gate record above, where the gate's commands run those proofs; do not run the suites again. With no gate record, their result is `unknown`.
+- When the outcome a row's Journey cell describes changes and the diff leaves that row's proofs untouched, that is a `major` finding with `axis: "spec"`: the headless core and its map must change together. So is a new journey with no row. A refactor or a styling change does not change an outcome. If you are unsure, make it `minor`.
+- Teeth test, in this disposable checkout, for one picked journey: break one line of the covered code so the journey's promise is false, run that journey's proof, confirm it fails on an assertion, then revert the line. A journey that stays green while the code is broken is a `major` finding with `axis: "spec"`. If the proof cannot run here, say so in the `Journeys:` line.
+- Put one line in `summary` that starts `Journeys:` and lists the IDs picked, their gate result, the teeth test, and any `device:` or `gap:` rows as not headless, e.g. `Journeys: ACT-01, GOAL-01 passed (gate); teeth: broke goal.ts → GOAL-01 red → reverted → green; SHOOT_LIVE-01 device, not headless.` The summary is printed in the PR body, so this line is the PR's verification record. These rows never go in `skipped`.
 
 Step 2 — Check the branch against the epic's acceptance criteria, listed below verbatim as the runner extracted them from the child issues. For each one, decide from the diff and the code whether it is met. A criterion you could not check is `unknown`. A criterion with no evidence is `unknown`, never `met`.
 
