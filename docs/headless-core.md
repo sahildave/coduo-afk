@@ -43,14 +43,15 @@ This holds for interactive sessions and for AFK lanes alike.
 | futari | Map enforced (`scripts/feature-coverage.sh`). Core is a folder, not a package, and the import rule does not catch what it misses (below) |
 | `afk validate` | Warns `no_feature_map` when the repo has no map (2026-11-27) |
 | Verifier prompt, Step 1d (`prompts/verifier.md`) | Reads the feature map, runs the touched rows' proofs and the teeth test, and flags behaviour that changed without its row (2026-11-27) |
-| `coduo-implement` skill | Silent. Rules 11 to 14 ask for red-then-green and evidence; none names the core, the CLI or the feature map |
-| `coduo-tickets`, `coduo-epic` | Silent. Tickets do not carry journey IDs |
+| `coduo-implement` skill | Rule 12, "Keep the headless core in sync" (`coduo` 1.5.5) |
+| `coduo-tickets` | A `## Journeys` section names the feature-map rows a ticket changes (`coduo` 1.5.5) |
+| `coduo-epic` | Silent |
 | `setup-coduo-toolchain` | One line, for Flutter only |
 | coduo-swiftui-factory | Generates a `<Name>Kit` package. Generates no CLI, no feature map and no import rule |
 
 ## What has to change for the rule to hold everywhere
 
-In order. Each is its own change in its own repo.
+In order. Items 1 to 4 are done (2026-11-27).
 
 1. **Verifier Step 1d** (this repo): read `docs/feature-map.md` and run the proofs of the rows
    whose code the diff touches, then the teeth test. Drop the `verify-*` skill lookup.
@@ -60,7 +61,7 @@ In order. Each is its own change in its own repo.
 5. **`setup-coduo-toolchain`**: per platform, write the import rule and the coverage check.
 6. **Factory**: recipes generate an empty feature map, its coverage test and the Kit import rule.
 
-Items 4 and 5 ship from `coduo-agents-marketplace`; item 6 from `coduo-swiftui-factory`.
+Items 3 to 5 ship in the `coduo` plugin from `sahildave/coduo-skills`; item 6 from `coduo-swiftui-factory`.
 
 ## History
 
