@@ -33,6 +33,7 @@ import {
   epicModifiedPaths,
   unrelatedChecks,
   validateEpic,
+  featureMapExists,
   epicScopeClashes,
 } from "./epic.mjs";
 import { freePort } from "./free-port.mjs";
@@ -747,6 +748,39 @@ test("a config WITH roles does not warn about them", () => {
     branchStatus: noBranch,
   });
   assert.ok(!report.warnings.some((w) => w.code === "no_roles"));
+});
+
+test("a repo with no feature map warns no_feature_map, and does NOT refuse", () => {
+  // Verifier Step 1d reads the feature map and skips without one, so a repo
+  // with none runs every lane with no journey check at all (docs/headless-core.md).
+  const report = validateEpic({ epic: ATLAS_EPIC, config, branchStatus: noBranch, hasFeatureMap: false });
+  assert.equal(report.ok, true, "a missing feature map must never refuse a run");
+  const warning = report.warnings.find((w) => w.code === "no_feature_map");
+  assert.ok(warning);
+  assert.match(warning.message, /docs\/feature-map\.md/, "it must name the file it looked for");
+});
+
+test("a repo with a feature map does not warn about it", () => {
+  const report = validateEpic({ epic: ATLAS_EPIC, config, branchStatus: noBranch, hasFeatureMap: true });
+  assert.ok(!report.warnings.some((w) => w.code === "no_feature_map"));
+});
+
+test("featureMapExists finds a root map and a per-package map, and nothing else", () => {
+  const repo = mkdtempSync(join(tmpdir(), "afk-fmap-"));
+  try {
+    assert.equal(featureMapExists(repo), false);
+    mkdirSync(join(repo, "docs"));
+    writeFileSync(join(repo, "docs", "other.md"), "");
+    assert.equal(featureMapExists(repo), false);
+    mkdirSync(join(repo, "game-blocks", "docs"), { recursive: true });
+    writeFileSync(join(repo, "game-blocks", "docs", "feature-map.md"), "");
+    assert.equal(featureMapExists(repo), true, "coduo-games keeps one map per game");
+    rmSync(join(repo, "game-blocks"), { recursive: true });
+    writeFileSync(join(repo, "docs", "feature-map.md"), "");
+    assert.equal(featureMapExists(repo), true);
+  } finally {
+    rmSync(repo, { recursive: true, force: true });
+  }
 });
 
 // ---------------------------------------------------------------------------

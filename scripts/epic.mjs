@@ -15,7 +15,7 @@
 // nothing at all — it is the acceptance path and must stay side-effect-free.
 import { infisicalBlocker } from "./infisical.mjs";
 import { createHash } from "node:crypto";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from "node:fs";
 import { cpus, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import {
@@ -615,7 +615,7 @@ export const unrelatedChecks = (dag, modifiedPaths) => {
  * @param {(branch: string) => {exists: boolean, divergent?: boolean, sha?: string}} branchStatus
  * @returns {object} a report; `ok` is the exit decision
  */
-export const validateEpic = ({ epic, config, branchStatus, liveEpics = [] }) => {
+export const validateEpic = ({ epic, config, branchStatus, liveEpics = [], hasFeatureMap = true }) => {
   const errors = [];
   const warnings = [];
   const report = {
@@ -659,6 +659,18 @@ export const validateEpic = ({ epic, config, branchStatus, liveEpics = [] }) => 
         ".afk-setup/config.yaml has no `roles:` block — every lane runs with no skill grounding, "
         + "and a model that is not told which skills exist invents names that fail silently. "
         + "Run `afk stack detect` for a proposal.",
+    });
+  }
+
+  // Verifier Step 1d reads the feature map and skips without one, so no lane's
+  // journeys get checked. A WARNING: most repos in this estate have none yet.
+  if (!hasFeatureMap) {
+    warnings.push({
+      code: "no_feature_map",
+      taskId: null,
+      message:
+        "no docs/feature-map.md (or <dir>/docs/feature-map.md) — the verifier runs no journey proofs "
+        + "and cannot check that the headless core and its map change together. See docs/headless-core.md.",
     });
   }
 
@@ -986,6 +998,15 @@ export const parseDelegateFlags = (flag, args) => {
   };
 };
 
+// The map lives at docs/feature-map.md, or one per package one level down
+// (coduo-games: game-blocks/docs/feature-map.md).
+export const featureMapExists = (root) => {
+  if (existsSync(resolve(root, "docs", "feature-map.md"))) return true;
+  return readdirSync(root, { withFileTypes: true }).some(
+    (entry) => entry.isDirectory() && existsSync(resolve(root, entry.name, "docs", "feature-map.md")),
+  );
+};
+
 const readConfig = (root) => {
   if (!existsSync(configPath(root))) return null;
   return loadConfig(root);
@@ -1012,6 +1033,7 @@ export const loadReport = ({ root, repo, number, baseBranch, bodyPath }) => {
       // than inside `validateEpic` so that function stays a pure function of a
       // fetched epic; this is the only caller that has a checkout to look at.
       liveEpics: liveEpics({ root, exclude: number }),
+      hasFeatureMap: featureMapExists(root),
     }),
   };
 };

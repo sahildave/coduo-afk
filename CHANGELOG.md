@@ -2,6 +2,14 @@
 
 ## Unreleased — lanes clean up after themselves, and nothing of the runner's is committed
 
+- **The verifier reads the feature map, and `afk validate` warns without one (2026-11-27).**
+  Verifier Step 1d looked for a `.claude/skills/verify-*/features/` folder that
+  no repo has, so it never ran. It now reads `docs/feature-map.md` (or
+  `<dir>/docs/feature-map.md`), runs the proofs of the rows whose code the diff
+  touches, and reports a `major` spec finding when behaviour changes and its
+  row does not. `afk validate` warns `no_feature_map` when the repo has no map;
+  it never refuses. No config change. See `docs/headless-core.md`.
+
 - **`afk orchestrator-lag` measures how long the Orchestrator stays quiet (2026-11-17).**
   For each lane that committed, merged, failed, hit a quota, got blocked, timed
   out, died or reached a `gate: after`, it finds the first Orchestrator message

@@ -40,12 +40,13 @@ File what you find as `findings` with `axis: "reach"`, alongside the two lists.
 {{gateBlock}}
 {{/gateBlock}}
 
-Step 1d — Journeys, only if the repo has a verify skill: a `.claude/skills/verify-*/` folder with a `features/` directory. If none exists, skip this step and say so in `summary`.
+Step 1d — Journeys, only if the repo has a feature map: `docs/feature-map.md`, or one per package at `<dir>/docs/feature-map.md`. If none exists, skip this step and say so in `summary`.
 
-- Pick the journey IDs (such as `FAQ-01`) whose feature file's `Covers:` line names a file this diff touches. Run those journeys with the skill's own run command.
+- Read the map's header for what a proof is and how it is checked. Pick the journey IDs (such as `ACT-01`) whose proofs test code this diff touches, and every row the diff adds or edits. Run those proofs with the repo's own test command, filtered to them.
+- A row whose behaviour the diff changes but whose proofs the diff leaves untouched is a `major` finding with `axis: "spec"`: the headless core and its map must change together. So is a new journey with no row.
 - Teeth test, in this disposable checkout: break one line of the covered code so the journey's promise is false, run that journey again, confirm it fails on an assertion, then revert the line. A journey that stays green while the code is broken is a `major` finding with `axis: "spec"`.
 - Put one line in `summary` that starts `Journeys:` and lists the IDs run, their result, and the teeth test, e.g. `Journeys: FAQ-01–03 passed; teeth: broke writer.ts → FAQ-01 red → reverted → green.` The summary is printed in the PR body, so this line is the PR's verification record.
-- A journey that could not run (servers would not start, port taken) goes in `skipped` with the reason.
+- A journey that could not run (servers would not start, port taken, a `device:` proof that needs real phones) goes in `skipped` with the reason.
 
 Step 2 — Check the branch against the epic's acceptance criteria, listed below verbatim as the runner extracted them from the child issues. For each one, decide from the diff and the code whether it is met. A criterion you could not check is `unknown`. A criterion with no evidence is `unknown`, never `met`.
 

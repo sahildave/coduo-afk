@@ -41,8 +41,8 @@ This holds for interactive sessions and for AFK lanes alike.
 | health-app | Enforced. ESLint `no-restricted-imports` on `src/lib/**`; `src/__tests__/feature-map.test.ts` |
 | shareling | Enforced for the core and the map: `kit-no-ui-import` ast-grep rule, `FeatureMapCoverageTests` |
 | futari | Map enforced (`scripts/feature-coverage.sh`). Core is a folder, not a package, and the import rule does not catch what it misses (below) |
-| `afk validate` | Not enforced. The `no_feature_map` check was written on a branch that never merged |
-| Verifier prompt, Step 1d (`prompts/verifier.md`) | Out of date. It looks for a `.claude/skills/verify-*/features/` folder, the shape the verify-app discussion rejected, and skips when there is none |
+| `afk validate` | Warns `no_feature_map` when the repo has no map (2026-11-27) |
+| Verifier prompt, Step 1d (`prompts/verifier.md`) | Reads the feature map, runs the touched rows' proofs and the teeth test, and flags behaviour that changed without its row (2026-11-27) |
 | `coduo-implement` skill | Silent. Rules 11 to 14 ask for red-then-green and evidence; none names the core, the CLI or the feature map |
 | `coduo-tickets`, `coduo-epic` | Silent. Tickets do not carry journey IDs |
 | `setup-coduo-toolchain` | One line, for Flutter only |
